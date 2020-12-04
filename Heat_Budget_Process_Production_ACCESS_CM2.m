@@ -4,7 +4,7 @@
 
 clear all;
 
-plot_only = 0;
+plot_only = 1;
 PI_or_his = 1; % 1 = PI-control, 0 = historical simualtion
 if (PI_or_his)
     mname = 'ACCESS_PIcontrol_TLZvolp.mat';
@@ -237,7 +237,7 @@ if (~plot_only)
             for vi =1:length(bvars2D)
                 var = squeeze(nansum(nansum(ncread(fname,bvars2D{vi}).* ...
                                       repmat(area,[1 1 tL]),1),2));
-                var = repmat(var',[zL 1]);
+                var = cat(1,var',zeros(zL-1,tL));
                 eval([bvars2D{vi} 'z = cat(2,' bvars2D{vi} 'z,var);']);
             end
             
@@ -297,6 +297,7 @@ if (~plot_only)
 else % Plotting
 
     load(mname);
+    load(mnameBUD);
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %%% POST PROCESSING
@@ -571,8 +572,7 @@ else % Plotting
     else
         load('PIstd.mat');
     end
-    
-    
+
 % $$$     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % $$$     %%% PLOTTING
 % $$$     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1943,6 +1943,84 @@ else % Plotting
 % $$$     end
 % $$$ end
 % $$$
+    
+    %%% BUDGET TESTING:
+    load(mname);
+    load(mnameBUD);
+    
+    % Fix advection terms by residual:
+    vars = {'temp_submeso', ...
+             'temp_vdiffuse_diff_cbt', 'temp_nonlocal_KPP', ...
+             'temp_vdiffuse_sbc','frazil_3d','sw_heat','temp_rivermix', ...
+             'neutral_diffusion_temp','neutral_gm_temp', ...
+             'temp_vdiffuse_k33', 'mixdownslope_temp', ...
+             'temp_sigma_diff','sfc_hflux_pme','temp_eta_smooth'};    
+    temp_advectionT = temp_tendencyT;
+    temp_advectionz = temp_tendencyz;
+    temp_advectiony = temp_tendencyy;
+    for vi=1:length(vars)
+        eval(['temp_advectionT = temp_advectionT - ' vars{vi} 'T;']);
+        eval(['temp_advectionz = temp_advectionz - ' vars{vi} 'z;']);
+        eval(['temp_advectiony = temp_advectiony - ' vars{vi} 'y;']);
+    end
+    
+    % group vars:
+    typs = {'T','z','y'};
+    for vi = 1:length(typs)
+        eval(['TEN' typs{vi} ' = temp_tendency' typs{vi} ';']);
+        eval(['ADV' typs{vi} ' = temp_advection' typs{vi} '+temp_submeso' typs{vi} '+neutral_gm_temp' typs{vi} ';']);
+        eval(['FOR' typs{vi} ' = temp_vdiffuse_sbc' typs{vi} '+frazil_3d' typs{vi} '+sw_heat' typs{vi} ...
+              '+temp_rivermix' typs{vi} '+sfc_hflux_pme' typs{vi} ...
+              '+temp_eta_smooth' typs{vi} ';']);
+        eval(['RMIX' typs{vi} ' = neutral_diffusion_temp' typs{vi} '+temp_vdiffuse_k33' typs{vi} '+mixdownslope_temp' typs{vi} ...
+              '+temp_sigma_diff' typs{vi} ';']);
+        eval(['VMIX' typs{vi} ' = temp_vdiffuse_diff_cbt' typs{vi} '+temp_nonlocal_KPP' typs{vi} ';']);
+    end
+% $$$     ADV = temp_advection  
+% $$$     
+% $$$     gvars = {{'Tendency',{'temp_tendency'}},...
+% $$$              {'Advection',{'temp_advection','temp_submeso','neutral_gm_temp'}}, ...
+% $$$              {'Forcing',{'temp_vdiffuse_sbc','frazil_3d','sw_heat','temp_rivermix','sfc_hflux_pme','temp_eta_smooth'}}, ...
+% $$$              {'Redi Mixing',{'neutral_diffusion_temp','temp_vdiffuse_k33','mixdownslope_temp','temp_sigma_diff'}}, ...
+% $$$              {'Vertical Mixing',{'temp_vdiffuse_diff_cbt','temp_nonlocal_KPP'}}};
+    vars = {'TEN','ADV','FOR','RMIX','VMIX'};
+    colors = {'m','b','k','r',[0 0.5 0]};     
+        
+    figure;
+    subplot(1,3,1);
+    for gi=1:length(vars)
+        eval(['var = mean(' vars{gi} 'z,2);']);
+        plot(cumsum(var,'reverse'),Z,'-','color',colors{gi});
+        hold on;
+    end
+    ylabel('Depth (m)');
+    set(gca,'ydir','reverse');
+% $$$     ylim([0 500]);
+    xlabel('Budget term (W)');
+    
+    subplot(1,3,2);
+    for gi=1:length(vars)
+        eval(['var = mean(' vars{gi} 'T,2);']);
+        plot(cumsum(var,'reverse'),T,'-','color',colors{gi});
+        hold on;
+    end
+    legend(vars);
+    ylabel('Temperature ($^\circ$C)');
+    xlabel('Budget term (W)');
+
+    subplot(1,3,3);
+    for gi=1:length(vars)
+        eval(['var = mean(' vars{gi} 'y,2);']);
+        plot(cumsum(var),latv,'-','color',colors{gi});
+        hold on;
+    end
+    ylabel('Latitude ($^\circ$N)');
+    xlabel('Budget term (W)');
+    
+    
+    
+
+
 
 end
 
