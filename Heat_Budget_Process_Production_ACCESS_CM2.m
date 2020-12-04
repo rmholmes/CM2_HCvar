@@ -4,7 +4,7 @@
 
 clear all;
 
-plot_only = 1;
+plot_only = 0;
 PI_or_his = 1; % 1 = PI-control, 0 = historical simualtion
 if (PI_or_his)
     mname = 'ACCESS_PIcontrol_TLZvolp.mat';
@@ -76,7 +76,7 @@ if (~plot_only)
                'xL','yL','zL','Z','Ze','zL','A', ...
                'latv','latv_edges');
     
-    %%%%%% Standard non-budget variables (mname):
+    %%%%%% Standard non-budget variables setup (mname):
     
     % Initialize variables:
     Hz = []; % Heat content at depth z (J)
@@ -115,6 +115,24 @@ if (~plot_only)
     
     % Wind power index:
     WPOW = [];
+
+    %%%%%% Budget variables setup (mnameBUD):
+    bvars3D = {'temp_tendency','temp_advection','temp_submeso', ...
+               'temp_vdiffuse_diff_cbt', 'temp_nonlocal_KPP', ...
+               'temp_vdiffuse_sbc','frazil_3d','sw_heat','temp_rivermix', ...
+               'neutral_diffusion_temp','neutral_gm_temp','temp_vdiffuse_k33',...
+               'mixdownslope_temp','temp_sigma_diff'};
+    bvars2D = {'sfc_hflux_pme','temp_eta_smooth','pme_river'}; % pme_river is mass_pmepr_on_nrho not binned (see ocean_sbc).
+    bvars = {bvars3D{:},bvars2D{:}};
+    
+    % Initialize variables:
+    var_list = {};
+    for vi = 1:length(bvars)
+        eval([bvars{vi} 'z = [];']);
+        eval([bvars{vi} 'T = [];']);
+        eval([bvars{vi} 'y = [];']);
+        var_list = {var_list{:},[bvars{vi} 'z'],[bvars{vi} 'y'],[bvars{vi} 'T']};
+    end
     
     % Start file loop:
     files = dir(base);
@@ -122,8 +140,10 @@ if (~plot_only)
     for fi = 1:length(files)
         if (strfind(files(fi).name,'month'))
 
+            %%% Standard variables:
+
             fname = [base files(fi).name];
-            sprintf('Doing %03d of %03d',fi,length(files))
+            sprintf('Doing standard vars %03d of %03d',fi,length(files))
             time_t = ncread(fname,'time');
             DT_A_t = ncread(fname,'average_DT')*86400;
         
@@ -198,98 +218,15 @@ if (~plot_only)
             WPOW_t = squeeze(nansum(nansum(ncread(fname,'wind_power_u')+ncread(fname,'wind_power_v'),1),2));
             WPOW = cat(1,WPOW,WPOW_t);
             
-            if (mod(fi,5)==0)
+% $$$             if (mod(fi,5)==0)
                 save(mname,'time','DT_A', ...
                      'Hz','Vz','HT','VT','Hy','Vy','AT', ...
                      'N34','TPIr1','TPIr2','TPIr3','AMOC','WPOW', ...
                      '-append');
-            end
-        end
-    end
+% $$$             end
 
-    %%%%%% Budget variables (mnameBUD):
-
-% $$$ # Surface heat fluxes (not including surface volume flux terms):
-% $$$ SFCH = temp_vdiffuse_sbc + sw_heat + frazil_3d + # 3D vars
-% $$$       temp_eta_smooth; # 2D vars
-% $$$       
-% $$$ # Surface heat fluxes from surface volume fluxes
-% $$$ SFCV = temp_rivermix + # 3D vars
-% $$$        sfc_hflux_pme # 2D vars
-% $$$        
-% $$$ # Shortwave redistribution
-% $$$ SWR = sw_heat # 3D vars
-% $$$ 
-% $$$ # Vertical mixing
-% $$$ VMIX = temp_vdiffuse_diff_cbt + temp_nonlocal_KPP # 3D vars
-% $$$ 
-% $$$ # Miscellaneous mixing
-% $$$ SMIX = mixdownslope_temp + temp_sigma_diff # 3D vars
-% $$$ 
-% $$$ # Neutral diffusion
-% $$$ RMIX = temp_vdiffuse_k33 + neutral_diffusion_temp # 3D vars
-% $$$ 
-% $$$ # Total tendency
-% $$$ TEN = temp_tendency # 3D vars
-% $$$ 
-% $$$ # Total external surface forcing
-% $$$ SFC = SFCH + SFCV
-% $$$ 
-% $$$ # Total internal surface forcing
-% $$$ SFCI = SFC - rho0*Cp*THETA*SVF
-% $$$ 
-% $$$ # Total explicit mixing
-% $$$ MIX = VMIX+SMIX+RMIX
-% $$$ 
-% $$$ # Numerical mixing (by residual)
-% $$$ NMIX = dHI/dt - SFCI - MIX
-
-    bvars3D = {'temp_tendency','temp_advection','temp_submeso', ...
-               'temp_vdiffuse_diff_cbt', 'temp_nonlocal_KPP', ...
-               'temp_vdiffuse_sbc','frazil_3d','sw_heat','temp_rivermix', ...
-               'neutral_diffusion_temp','neutral_gm_temp','temp_vdiffuse_k33',...
-               'mixdownslope_temp','temp_sigma_diff'};
-    bvars2D = {'sfc_hflux_pme','temp_eta_smooth','pme_river'}; %
-                                                               % pme_river
-                                                               % is
-                                                               % mass_pmepr_on_nrho
-                                                               % not
-                                                               % binned
-                                                               % (see ocean_sbc).
-    bvars = {bvars3D{:},bvars2D{:}};
-    
-    % Initialize variables:
-    time = []; % time axis
-    DT_A = []; % averaging time
-    
-    var_list = {'time','DT_A'};
-    for vi = 1:length(bvars)
-        eval([bvars{vi} 'z = [];']);
-        eval([bvars{vi} 'T = [];']);
-        eval([bvars{vi} 'y = [];']);
-        var_list = {var_list{:},[bvars{vi} 'z'],[bvars{vi} 'y'],[bvars{vi} 'T']};
-    end
-    
-    % Start file loop:
-    files = dir(base);
-
-    for fi = 1:length(files)
-        if (strfind(files(fi).name,'month'))
-
-            fname = [base files(fi).name];
-            sprintf('Doing %03d of %03d',fi,length(files))
-            time_t = ncread(fname,'time');
-            DT_A_t = ncread(fname,'average_DT')*86400;
-        
-            time = cat(1,time,time_t);
-            DT_A = cat(1,DT_A,DT_A_t);
-
-            tL = length(time_t);
-            
-            temp = ncread(fname,'temp');
-            temp(~mask) = NaN;
-            if (max(max(temp))>120); temp=temp-273.15;end;
-            SST = squeeze(temp(:,:,1,:));
+            %%% BUDGET variables:
+            sprintf('Doing budget vars %03d of %03d',fi,length(files))
 
             % Depth binning:
             for vi =1:length(bvars3D)
@@ -338,11 +275,11 @@ if (~plot_only)
                     %Accumulate sums:
                     indsS = SST>=Te(Ti) & SST<Te(Ti+1);
                     eval([bvars2D{vi} 'T_t(Ti,:) = ' bvars2D{vi} ...
-                          'T_t(Ti,:) + squeeze(nansum(nansum(var.*inds,1),2))'';']);
+                          'T_t(Ti,:) + squeeze(nansum(nansum(var.*indsS,1),2))'';']);
                 end
                 indsS = SST>Te(end);
                 eval([bvars2D{vi} 'T_t(end,:) = ' bvars2D{vi} ...
-                      'T_t(end,:) + squeeze(nansum(nansum(var.*inds,1),2))'';']);
+                      'T_t(end,:) + squeeze(nansum(nansum(var.*indsS,1),2))'';']);
             end
             
             for vi=1:length(bvars)
@@ -350,9 +287,10 @@ if (~plot_only)
                       'T_t);']);
             end
             
-            if (mod(fi,5)==0)
-                save(mnameBUD,var_list,'-append');
-            end
+% $$$             if (mod(fi,5)==0)            
+                save(mnameBUD,var_list{:},'-append');
+% $$$             end
+
         end
     end
 
@@ -987,7 +925,7 @@ else % Plotting
         yvar = Hyp;
         ycxs = [-0.5e23 1e21 0.5e23];
         Ylab = '$H(p_\phi)$';
-else
+    else
         Zvar = Tzp;
         Zcxs = [-0.2 0.02 0.2];
         Zlab = '$\Theta(p_z)$';
@@ -2004,4 +1942,44 @@ else
 % $$$     
 % $$$     end
 % $$$ end
+% $$$
+
+end
+
+%% Budget variables summary:
+
+
+% $$$ # Surface heat fluxes (not including surface volume flux terms):
+% $$$ SFCH = temp_vdiffuse_sbc + sw_heat + frazil_3d + # 3D vars
+% $$$       temp_eta_smooth; # 2D vars
+% $$$       
+% $$$ # Surface heat fluxes from surface volume fluxes
+% $$$ SFCV = temp_rivermix + # 3D vars
+% $$$        sfc_hflux_pme # 2D vars
+% $$$        
+% $$$ # Shortwave redistribution
+% $$$ SWR = sw_heat # 3D vars
 % $$$ 
+% $$$ # Vertical mixing
+% $$$ VMIX = temp_vdiffuse_diff_cbt + temp_nonlocal_KPP # 3D vars
+% $$$ 
+% $$$ # Miscellaneous mixing
+% $$$ SMIX = mixdownslope_temp + temp_sigma_diff # 3D vars
+% $$$ 
+% $$$ # Neutral diffusion
+% $$$ RMIX = temp_vdiffuse_k33 + neutral_diffusion_temp # 3D vars
+% $$$ 
+% $$$ # Total tendency
+% $$$ TEN = temp_tendency # 3D vars
+% $$$ 
+% $$$ # Total external surface forcing
+% $$$ SFC = SFCH + SFCV
+% $$$ 
+% $$$ # Total internal surface forcing
+% $$$ SFCI = SFC - rho0*Cp*THETA*SVF
+% $$$ 
+% $$$ # Total explicit mixing
+% $$$ MIX = VMIX+SMIX+RMIX
+% $$$ 
+% $$$ # Numerical mixing (by residual)
+% $$$ NMIX = dHI/dt - SFCI - MIX

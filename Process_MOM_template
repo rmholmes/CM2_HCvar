@@ -2,8 +2,8 @@
 #PBS -N CM2a
 #PBS -P e14
 #PBS -l ncpus=1
-#PBS -l mem=8GB
-#PBS -l walltime=06:00:00
+#PBS -l mem=16GB
+#PBS -l walltime=24:00:00
 #PBS -l wd
 #PBS -l software=matlab_unsw
 #PBS -l storage=gdata/hh5+gdata/ik11+scratch/e14+gdata/ua8+gdata/e14+gdata/p66
@@ -14,5 +14,5 @@
 module load matlab
 module load matlab_licence/unsw
 
-matlab -nodisplay -nodesktop -nosplash -r "ACCESS_SpecificHeat;exit;"
+matlab -nodisplay -nodesktop -nosplash -r "Heat_Budget_Process_Production_ACCESS_CM2;exit;"
 
