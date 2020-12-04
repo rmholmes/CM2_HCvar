@@ -117,13 +117,15 @@ if (~plot_only)
     WPOW = [];
 
     %%%%%% Budget variables setup (mnameBUD):
-    bvars3D = {'temp_tendency','temp_advection','temp_submeso', ...
+    bvars3D = {'temp_tendency','temp_submeso', ...
                'temp_vdiffuse_diff_cbt', 'temp_nonlocal_KPP', ...
                'temp_vdiffuse_sbc','frazil_3d','sw_heat','temp_rivermix', ...
                'neutral_diffusion_temp','neutral_gm_temp','temp_vdiffuse_k33',...
                'mixdownslope_temp','temp_sigma_diff'};
     bvars2D = {'sfc_hflux_pme','temp_eta_smooth','pme_river'}; % pme_river is mass_pmepr_on_nrho not binned (see ocean_sbc).
     bvars = {bvars3D{:},bvars2D{:}};
+    % NOTE: temp_advection is corrupted in the CM2 output -
+    % reconstruct by residual.
     
     % Initialize variables:
     var_list = {};
@@ -227,38 +229,23 @@ if (~plot_only)
 
             %%% BUDGET variables:
             sprintf('Doing budget vars %03d of %03d',fi,length(files))
-
-            % Depth binning:
-            for vi =1:length(bvars3D)
-                var = squeeze(nansum(nansum(ncread(fname,bvars3D{vi}).* ...
-                                      repmat(area,[1 1 zL tL]),1),2));
-                eval([bvars3D{vi} 'z = cat(2,' bvars3D{vi} 'z,var);']);
-            end
-            for vi =1:length(bvars2D)
-                var = squeeze(nansum(nansum(ncread(fname,bvars2D{vi}).* ...
-                                      repmat(area,[1 1 tL]),1),2));
-                var = cat(1,var',zeros(zL-1,tL));
-                eval([bvars2D{vi} 'z = cat(2,' bvars2D{vi} 'z,var);']);
-            end
-            
-            % Latitude binning:
-            for vi =1:length(bvars3D)
-                var = squeeze(nansum(nansum(ncread(fname,bvars3D{vi}).* ...
-                                      repmat(area,[1 1 zL tL]),1),3));
-                eval([bvars3D{vi} 'y = cat(2,' bvars3D{vi} 'y,var);']);
-            end
-            for vi =1:length(bvars2D)
-                var = squeeze(nansum(ncread(fname,bvars2D{vi}).* ...
-                                      repmat(area,[1 1 tL]),1));
-                eval([bvars2D{vi} 'y = cat(2,' bvars2D{vi} 'y,var);']);
-            end
-            
-            % Temperature binning:
             for vi =1:length(bvars)
                 eval([bvars{vi} 'T_t = zeros(TL,tL);']);
             end
-            for vi=1:length(bvars3D)
+
+            % Loop through tendency variables:
+            for vi =1:length(bvars3D)
                 var = ncread(fname,bvars3D{vi}).*repmat(area,[1 1 zL tL]);
+                
+                % Depth binning:
+                varz = squeeze(nansum(nansum(var,1),2));
+                eval([bvars3D{vi} 'z = cat(2,' bvars3D{vi} 'z,varz);']);
+            
+                % Latitude binning:
+                vary = squeeze(nansum(nansum(var,1),3));
+                eval([bvars3D{vi} 'y = cat(2,' bvars3D{vi} 'y,vary);']);
+
+                % Temperature binning:
                 for Ti=1:TL
                     %Accumulate sums:
                     inds = temp>=Te(Ti) & temp<Te(Ti+1);
@@ -269,17 +256,27 @@ if (~plot_only)
                 eval([bvars3D{vi} 'T_t(end,:) = ' bvars3D{vi} ...
                       'T_t(end,:) + squeeze(nansum(nansum(nansum(var.*inds,1),2),3))'';']);
             end
-            for vi=1:length(bvars2D)
+            for vi =1:length(bvars2D)
                 var = ncread(fname,bvars2D{vi}).*repmat(area,[1 1 tL]);
+
+                % Depth binning:
+                varz = squeeze(nansum(nansum(var,1),2));
+                varz = cat(1,varz',zeros(zL-1,tL));
+                eval([bvars2D{vi} 'z = cat(2,' bvars2D{vi} 'z,varz);']);
+            
+                % Latitude binning:
+                vary = squeeze(nansum(var,1));
+                eval([bvars2D{vi} 'y = cat(2,' bvars2D{vi} 'y,vary);']);
+            
+                % Temperature binning:
                 for Ti=1:TL
-                    %Accumulate sums:
                     indsS = SST>=Te(Ti) & SST<Te(Ti+1);
                     eval([bvars2D{vi} 'T_t(Ti,:) = ' bvars2D{vi} ...
                           'T_t(Ti,:) + squeeze(nansum(nansum(var.*indsS,1),2))'';']);
                 end
                 indsS = SST>Te(end);
                 eval([bvars2D{vi} 'T_t(end,:) = ' bvars2D{vi} ...
-                      'T_t(end,:) + squeeze(nansum(nansum(var.*indsS,1),2))'';']);
+                      'T_t(end,:) + squeeze(nansum(nansum(var.*indsS,1),2))'';']);            
             end
             
             for vi=1:length(bvars)
@@ -1990,32 +1987,33 @@ else % Plotting
     subplot(1,3,1);
     for gi=1:length(vars)
         eval(['var = mean(' vars{gi} 'z,2);']);
-        plot(cumsum(var,'reverse'),Z,'-','color',colors{gi});
+        plot(cumsum(var,'reverse')/1e15,Z,'-','color',colors{gi});
         hold on;
     end
     ylabel('Depth (m)');
     set(gca,'ydir','reverse');
-% $$$     ylim([0 500]);
-    xlabel('Budget term (W)');
+    ylim([0 500]);
+    xlim([-2 2]);
+    xlabel('Vertical heat transport (PW)');
     
     subplot(1,3,2);
     for gi=1:length(vars)
         eval(['var = mean(' vars{gi} 'T,2);']);
-        plot(cumsum(var,'reverse'),T,'-','color',colors{gi});
+        plot(cumsum(var,'reverse')/1e15,T,'-','color',colors{gi});
         hold on;
     end
     legend(vars);
     ylabel('Temperature ($^\circ$C)');
-    xlabel('Budget term (W)');
+    xlabel('Diathermal heat transport (PW)');
 
     subplot(1,3,3);
     for gi=1:length(vars)
         eval(['var = mean(' vars{gi} 'y,2);']);
-        plot(cumsum(var),latv,'-','color',colors{gi});
+        plot(cumsum(var)/1e15,latv,'-','color',colors{gi});
         hold on;
     end
     ylabel('Latitude ($^\circ$N)');
-    xlabel('Budget term (W)');
+    xlabel('Meridional heat transport (PW)');
     
     
     
