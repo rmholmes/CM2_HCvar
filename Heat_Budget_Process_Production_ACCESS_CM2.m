@@ -1,7 +1,5 @@
 % Process surface forcing and parameterized mixing terms from
 % ACCESS-CM2 runs binned into temperature coordinates.
-
-
 clear all;
 
 plot_only = 1;
