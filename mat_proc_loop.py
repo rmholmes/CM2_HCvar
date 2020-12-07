@@ -20,8 +20,12 @@ dates = [x[-8:] for x in files]
 
 dates = sorted(dates,key=lambda x: int(x))
 
-dates = dates[:10]
+# Split into sets of 300 runs:
+ss = 3
+dates = dates[ss*300:ss*300+300]
+
 print(dates)
+print(len(dates))#len(dates))
 for i in range(len(dates)):
     fname = base + 'ocean_month.nc-' + dates[i]
     oname = obase + 'CM2_' + name + '_' + dates[i] + '.mat'
