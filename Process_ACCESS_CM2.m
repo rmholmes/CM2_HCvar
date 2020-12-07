@@ -43,15 +43,15 @@ for zi=1:zL
     A(zi) = nansum(nansum(area(mask(:,:,zi))));
 end
 
-% Save grid info (doesn't vary with time):
-save(oname,'Cp','rho0','dT','Te','T','TL',...
-     'xL','yL','zL','Z','Ze','zL','A', ...
-     'latv','latv_edges');
-
 % Time info:
 time = ncread(fname,'time');
 DT_A = ncread(fname,'average_DT')*86400;
 tL = length(time);
+
+% Save grid info (doesn't vary with time):
+save(oname,'Cp','rho0','dT','Te','T','TL',...
+     'xL','yL','zL','Z','Ze','zL','A', ...
+     'latv','latv_edges','time','DT_A','tL');
 
 %%%% Load processing variables:
 temp = ncread(fname,'temp');
@@ -192,6 +192,6 @@ for vi =1:length(bvars2D)
           '(end,:) + squeeze(nansum(nansum(var.*indsS,1),2))'';']);
 end
 
-save(oname,'Tv','Zv','Yv',,'-append');
+save(oname,'Tv','Zv','Yv','-append');
 
 
