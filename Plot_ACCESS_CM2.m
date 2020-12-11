@@ -53,13 +53,21 @@ for vi =1:length(vars)
 end
 
 % Do cumulative sums:
-Zv.H_c = cat(1,zeros(1,tL),cumsum(Zv.H,1));
-Zv.V_c = cat(1,zeros(1,tL),cumsum(Zv.V,1));
-Yv.H_c = cat(1,zeros(1,tL),cumsum(Yv.H,1));
-Yv.V_c = cat(1,zeros(1,tL),cumsum(Yv.V,1));
-Tv.H_c = cat(1,cumsum(Tv.H,1,'reverse'),zeros(1,tL));
-Tv.V_c = cat(1,cumsum(Tv.V,1,'reverse'),zeros(1,tL));
-Tv.A_c = cat(1,cumsum(Tv.A,1,'reverse'),zeros(1,tL));
+fnames = fieldnames(Zv);
+for vi =1:length(fnames)
+    eval(['Zv.' fnames{vi} '_c = cat(1,zeros(1,tL),cumsum(Zv.' ...
+          fnames{vi} ',1));']);
+end
+fnames = fieldnames(Yv);
+for vi =1:length(fnames)
+    eval(['Yv.' fnames{vi} '_c = cat(1,zeros(1,tL),cumsum(Yv.' ...
+          fnames{vi} ',1));']);
+end
+fnames = fieldnames(Tv);
+for vi =1:length(fnames)
+    eval(['Tv.' fnames{vi} '_c = cat(1,cumsum(Tv.' ...
+          fnames{vi} ',1,''reverse''),zeros(1,tL));']);
+end
 
 OHC = squeeze(Zv.H_c(end,:))';
 
@@ -122,7 +130,7 @@ OHC = squeeze(Zv.H_c(end,:))';
     TvP.Tap = zeros(PL,tL);
     ZvP.Tp = zeros(PL,tL);
     YvP.Tp = zeros(PL,tL);
-    bvars = {'TEN','ADV','FOR','RMIX','VMIX'};
+    bvars = {'TEN_c','ADV_c','FOR_c','RMIX_c','VMIX_c'};
     for ti = 1:tL
         TvP.Tp(:,ti) = interp1(Tv.P(:,ti)+(1:TL+1)'/1e10,Te,P,'linear');
         TvP.Tp(1,ti) = Te(end);
@@ -130,18 +138,64 @@ OHC = squeeze(Zv.H_c(end,:))';
         TvP.Tap(1,ti) = Te(end);
         ZvP.Tp(:,ti) = interp1(Zv.P(:,ti)+(1:zL+1)'/1e10,Zv.Te(:,ti),P,'linear');
         YvP.Tp(:,ti) = interp1(Yv.P(:,ti)+(1:yL+1)'/1e10,Yv.Te(:,ti),P,'linear');
-% $$$         for vi=1:length(bvars)
-% $$$             eval(['ZvP.' bvars{vi} ' = interp1(Zv.P(:,ti)+(1:zL+1)''/1e10,Zv.' bvars{vi} '(:,ti),P,''linear'');']);
-% $$$             eval(['YvP.' bvars{vi} ' = interp1(Yv.P(:,ti)+(1:yL+1)''/1e10,Yv.' bvars{vi} '(:,ti),P,''linear'');']);
-% $$$             eval(['TvP.' bvars{vi} ' = interp1(Tv.P(:,ti)+(1:TL+1)''/1e10,Tv.' bvars{vi} '(:,ti),P,''linear'');']);
-% $$$         end
+        for vi=1:length(bvars)
+            eval(['ZvP.' bvars{vi} '(:,ti) = interp1(Zv.P(:,ti)+(1:zL+1)''/1e10,Zv.' bvars{vi} '(:,ti),P,''linear'');']);
+            eval(['YvP.' bvars{vi} '(:,ti) = interp1(Yv.P(:,ti)+(1:yL+1)''/1e10,Yv.' bvars{vi} '(:,ti),P,''linear'');']);
+            eval(['TvP.' bvars{vi} '(:,ti) = interp1(Tv.P(:,ti)+(1:TL+1)''/1e10,Tv.' bvars{vi} '(:,ti),P,''linear'');']);
+        end
     end
+    
+% $$$     %% Check budgets:
+% $$$     colors = {'m','b','k','r',[0 0.5 0]};     
+% $$$     figure;
+% $$$     subplot(1,3,1);
+% $$$     for gi=1:length(bvars)
+% $$$         eval(['var = mean(ZvP.' bvars{gi} ',2);']);
+% $$$         plot(var/1e15,P,'-','color',colors{gi});
+% $$$         hold on;
+% $$$     end
+% $$$     ylabel('Depth percentile');
+% $$$     set(gca,'ydir','reverse');
+% $$$     ylim([0 100]);
+% $$$     xlim([-2 2]);
+% $$$     xlabel('Vertical heat transport (PW)');
+% $$$     
+% $$$     subplot(1,3,2);
+% $$$     for gi=1:length(bvars)
+% $$$         eval(['var = mean(TvP.' bvars{gi} ',2);']);
+% $$$         plot(var/1e15,P,'-','color',colors{gi});
+% $$$         hold on;
+% $$$     end
+% $$$     legend('Tendency','Advection','Surface Forcing','Neutral Mixing','Vertical Mixing');
+% $$$     set(gca,'ydir','reverse');
+% $$$     ylim([0 100]);
+% $$$     ylabel('Temperature percentile');
+% $$$     xlabel('Diathermal heat transport (PW)');
+% $$$ 
+% $$$     subplot(1,3,3);
+% $$$     for gi=1:length(bvars)
+% $$$         eval(['var = mean(YvP.' bvars{gi} ',2);']);
+% $$$         plot(var/1e15,P,'-','color',colors{gi});
+% $$$         hold on;
+% $$$     end
+% $$$     ylim([0 100]);
+% $$$     ylabel('Latitude percentile');
+% $$$     xlabel('Meridional heat transport (PW)');
+
 
     zofP_mean = -interp1(mean(Zv.P,2),Ze,P,'linear'); % Depth axis to
                                                     % go with depth-volume
     yofP_mean = interp1(mean(Yv.P,2)+(1:yL+1)'/1e10,latv_edges,P,'linear'); % Depth axis to
                                                     % go with depth-volume
 
+    % Time-integrate budget terms:
+    for ti =1:length(typs)
+        for vi=1:length(bvars)
+            eval([typs{ti} 'vP.' bvars{vi} ' = cumsum(' typs{ti} ...
+                  'vP.' bvars{vi} '.*repmat(DT_A'',[PL 1]),2);']);
+        end
+    end    
+    
     % Construct climatology and make years even:
     if (PI_or_his)
         yr1 =50; % initial years to throw out
@@ -177,136 +231,140 @@ OHC = squeeze(Zv.H_c(end,:))';
     OHCfull = OHC;
         
     % Calculate cubic drift trend and subtract:
+    fnames = fieldnames(TvP);
+    ZvP.Tap = TvP.Tap;
+    YvP.Tap = TvP.Tap; % for convience -> delete after...
     if (PI_or_his)
         
-    % Calculate means:
-    TvP.Tp_mean = mean(TvP.Tp,2);
-    TvP.Tap_mean = mean(TvP.Tap,2);
-    ZvP.Tp_mean = mean(ZvP.Tp,2);
-    YvP.Tp_mean = mean(YvP.Tp,2);    
+    for ti = 1:length(typs)
+        for vi = 1:length(fnames)
+            tn = typs{ti};
+            vn = fnames{vi};
 
-    TvP.Tp_cubtr = zeros(4,PL);
-    TvP.Tp_cub = zeros(tL,PL);
-    TvP.Tap_cubtr = zeros(4,PL);
-    TvP.Tap_cub = zeros(tL,PL);
-    ZvP.Tp_cubtr = zeros(4,PL);
-    ZvP.Tp_cub = zeros(tL,PL);
-    YvP.Tp_cubtr = zeros(4,PL);
-    YvP.Tp_cub = zeros(tL,PL);
-    for pi=1:PL
-        [ZvP.Tp_cub(:,pi),ZvP.Tp_cubtr(:,pi)] = cubfit(time,ZvP.Tp(pi,:)');
-        [YvP.Tp_cub(:,pi),YvP.Tp_cubtr(:,pi)] = cubfit(time,YvP.Tp(pi,:)');
-        [TvP.Tp_cub(:,pi),TvP.Tp_cubtr(:,pi)] = cubfit(time,TvP.Tp(pi,:)');
-        [TvP.Tap_cub(:,pi),TvP.Tap_cubtr(:,pi)] = cubfit(time,TvP.Tap(pi,:)');
+            % Mean:
+            eval([tn 'vP.' vn '_mean = mean(' tn 'vP.' vn ',2);']);
+            
+            % Calculate cubic trend:
+            eval([tn 'vP.' vn '_cub = zeros(tL,PL);']);
+            eval([tn 'vP.' vn '_cubtr = zeros(4,PL);']);
+            for pi=1:PL
+                eval(['[' tn 'vP.' vn '_cub(:,pi),' tn 'vP.' tn ...
+                      '_cubtr(:,pi)] = cubfit(time,' tn 'vP.' vn ...
+                      '(pi,:)'');']);
+            end
+            eval([tn 'vP.' vn '_cub = ' tn 'vP.' vn '_cub'';']);
+            
+            % subtract cubic trend:
+            eval([tn 'vP.' vn ' = ' tn 'vP.' vn '-' tn 'vP.' vn '_cub;']);
+            
+        end
     end
-    TvP.Tp_cub = TvP.Tp_cub';
-    TvP.Tap_cub = TvP.Tap_cub';
-    ZvP.Tp_cub = ZvP.Tp_cub';
-    YvP.Tp_cub = YvP.Tp_cub';
     [OHC_cub,OHC_cubtr] = cubfit(time,OHC);
-        
-    % subtract cubear trend:
-    TvP.Tp = TvP.Tp-TvP.Tp_cub;
-    ZvP.Tp = ZvP.Tp-ZvP.Tp_cub;
-    YvP.Tp = YvP.Tp-YvP.Tp_cub;
     OHC = OHC-OHC_cub;
     
-    PI.ZvP.Tp_cubtr = ZvP.Tp_cubtr;
-    PI.TvP.Tp_cubtr = TvP.Tp_cubtr;
-    PI.YvP.Tp_cubtr = YvP.Tp_cubtr;
-    PI.time = time;
-    PI.OHCfull = OHCfull;
-    PI.OHC = OHC;
-    PI.OHC_cubtr = OHC_cubtr;
-    PI.TvP.Tp_mean = TvP.Tp_mean;
-    PI.YvP.Tp_mean = YvP.Tp_mean;
-    PI.ZvP.Tp_mean = ZvP.Tp_mean;
-    save('PIcubicFit.mat','PI');
+% $$$     PI.ZvP.Tp_cubtr = ZvP.Tp_cubtr;
+% $$$     PI.TvP.Tp_cubtr = TvP.Tp_cubtr;
+% $$$     PI.YvP.Tp_cubtr = YvP.Tp_cubtr;
+% $$$     PI.time = time;
+% $$$     PI.OHCfull = OHCfull;
+% $$$     PI.OHC = OHC;
+% $$$     PI.OHC_cubtr = OHC_cubtr;
+% $$$     PI.TvP.Tp_mean = TvP.Tp_mean;
+% $$$     PI.YvP.Tp_mean = YvP.Tp_mean;
+% $$$     PI.ZvP.Tp_mean = ZvP.Tp_mean;
+% $$$     save('PIcubicFit.mat','PI');
 
     else
-        Itime = -100;
-        load('PIcubicFit.mat');
-        TvP.Tp_mean = PI.TvP.Tp_mean;
-        YvP.Tp_mean = PI.YvP.Tp_mean;
-        ZvP.Tp_mean = PI.ZvP.Tp_mean;
-
-        TvP.Tp_cub = zeros(tL,PL);
-        TvP.Tap_cub = zeros(tL,PL);
-        ZvP.Tp_cub = zeros(tL,PL);
-        YvP.Tp_cub = zeros(tL,PL);
-        
-        t = time-Itime;
-        t2 = (time-Itime).^2;
-        t3 = (time-Itime).^3;
-        
-        for pi = 1:PL
-            TvP.Tp_cub(:,pi) = PI.TvP.Tp_cubtr(1,pi)+PI.TvP.Tp_cubtr(2,pi).*t ...
-                          + PI.TvP.Tp_cubtr(3,pi).*t2 + PI.TvP.Tp_cubtr(4,pi).*t3;
-            YvP.Tp_cub(:,pi) = PI.YvP.Tp_cubtr(1,pi)+PI.YvP.Tp_cubtr(2,pi).*t ...
-                          + PI.YvP.Tp_cubtr(3,pi).*t2 + PI.YvP.Tp_cubtr(4,pi).*t3;
-            ZvP.Tp_cub(:,pi) = PI.ZvP.Tp_cubtr(1,pi)+PI.ZvP.Tp_cubtr(2,pi).*t ...
-                          + PI.ZvP.Tp_cubtr(3,pi).*t2 + PI.ZvP.Tp_cubtr(4,pi).*t3;
-        end
-        OHC_cub = PI.OHC_cubtr(1)+PI.OHC_cubtr(2).*t + ...
-                  PI.OHC_cubtr(3).*t2 + PI.OHC_cubtr(4).*t3;
-    
-        % subtract cubear trend:
-        TvP.Tp = TvP.Tp-TvP.Tp_cub';
-        ZvP.Tp = ZvP.Tp-ZvP.Tp_cub';
-        YvP.Tp = YvP.Tp-YvP.Tp_cub';
-        OHC = OHC-OHC_cub;
-        
-        % Set date:
-        time = time+1850;
-        yr1 = 1850;
+        ' NOT ADJUSTED YET!'
+% $$$         Itime = -100;
+% $$$         load('PIcubicFit.mat');
+% $$$         TvP.Tp_mean = PI.TvP.Tp_mean;
+% $$$         YvP.Tp_mean = PI.YvP.Tp_mean;
+% $$$         ZvP.Tp_mean = PI.ZvP.Tp_mean;
+% $$$ 
+% $$$         TvP.Tp_cub = zeros(tL,PL);
+% $$$         TvP.Tap_cub = zeros(tL,PL);
+% $$$         ZvP.Tp_cub = zeros(tL,PL);
+% $$$         YvP.Tp_cub = zeros(tL,PL);
+% $$$         
+% $$$         t = time-Itime;
+% $$$         t2 = (time-Itime).^2;
+% $$$         t3 = (time-Itime).^3;
+% $$$         
+% $$$         for pi = 1:PL
+% $$$             TvP.Tp_cub(:,pi) = PI.TvP.Tp_cubtr(1,pi)+PI.TvP.Tp_cubtr(2,pi).*t ...
+% $$$                           + PI.TvP.Tp_cubtr(3,pi).*t2 + PI.TvP.Tp_cubtr(4,pi).*t3;
+% $$$             YvP.Tp_cub(:,pi) = PI.YvP.Tp_cubtr(1,pi)+PI.YvP.Tp_cubtr(2,pi).*t ...
+% $$$                           + PI.YvP.Tp_cubtr(3,pi).*t2 + PI.YvP.Tp_cubtr(4,pi).*t3;
+% $$$             ZvP.Tp_cub(:,pi) = PI.ZvP.Tp_cubtr(1,pi)+PI.ZvP.Tp_cubtr(2,pi).*t ...
+% $$$                           + PI.ZvP.Tp_cubtr(3,pi).*t2 + PI.ZvP.Tp_cubtr(4,pi).*t3;
+% $$$         end
+% $$$         OHC_cub = PI.OHC_cubtr(1)+PI.OHC_cubtr(2).*t + ...
+% $$$                   PI.OHC_cubtr(3).*t2 + PI.OHC_cubtr(4).*t3;
+% $$$     
+% $$$         % subtract cubear trend:
+% $$$         TvP.Tp = TvP.Tp-TvP.Tp_cub';
+% $$$         ZvP.Tp = ZvP.Tp-ZvP.Tp_cub';
+% $$$         YvP.Tp = YvP.Tp-YvP.Tp_cub';
+% $$$         OHC = OHC-OHC_cub;
+% $$$         
+% $$$         % Set date:
+% $$$         time = time+1850;
+% $$$         yr1 = 1850;
     end
         
-    % Seasonal cycle:
-    TvP.Tp_clim = zeros(PL,12);
-    TvP.Tap_clim = zeros(PL,12);
-    ZvP.Tp_clim = zeros(PL,12);
-    YvP.Tp_clim = zeros(PL,12);
     for vi=1:length(TIMESERIES)
         eval([TIMESERIES{vi} '_clim = zeros(12,1);']);
-    end
-    for mi=1:12
-        TvP.Tp_clim(:,mi) = mean(TvP.Tp(:,mi:12:end),2);
-        TvP.Tap_clim(:,mi) = mean(TvP.Tap(:,mi:12:end),2);
-        ZvP.Tp_clim(:,mi) = mean(ZvP.Tp(:,mi:12:end),2);
-        YvP.Tp_clim(:,mi) = mean(YvP.Tp(:,mi:12:end),2);
-        for vi=1:length(TIMESERIES)
+        for mi=1:12
             eval([TIMESERIES{vi} '_clim(mi) = mean(' TIMESERIES{vi} ...
                   '(mi:12:end));']);
         end
-    end
-    
-    % Subtract mean of season to avoid changing mean:
-    TvP.Tp_clim = TvP.Tp_clim-repmat(mean(TvP.Tp_clim,2),[1 12]);
-    ZvP.Tp_clim = ZvP.Tp_clim-repmat(mean(ZvP.Tp_clim,2),[1 12]);
-    YvP.Tp_clim = YvP.Tp_clim-repmat(mean(YvP.Tp_clim,2),[1 12]);
-% $$$     for vi=1:length(TIMESERIES)
-% $$$         eval([TIMESERIES{vi} '_clim = ' TIMESERIES{vi} '_clim - mean(' TIMESERIES{vi} ');']);
-% $$$     end
-    
-    % Subtract seasonal cycle:
-    TvP.Tp = TvP.Tp - repmat(TvP.Tp_clim,[1 nyrs]);
-    TvP.Tap = TvP.Tap - repmat(TvP.Tap_clim,[1 nyrs]);
-    ZvP.Tp = ZvP.Tp - repmat(ZvP.Tp_clim,[1 nyrs]);
-    YvP.Tp = YvP.Tp - repmat(YvP.Tp_clim,[1 nyrs]);
-    for vi=1:length(TIMESERIES)
         eval([TIMESERIES{vi} ' = ' TIMESERIES{vi} ...
               ' - repmat(' TIMESERIES{vi} '_clim,[nyrs 1]);']);
     end
-    
-    if (PI_or_his)
-        PI.OHC = OHC;
-        save('PIcubicFit.mat','PI');
+
+    for ti = 1:length(typs)
+        for vi = 1:length(fnames)
+            tn = typs{ti};
+            vn = fnames{vi};
+
+            % Calculate Seasonal cycle:
+            eval([tn 'vP.' vn '_clim = zeros(PL,12);']);
+            for mi=1:12
+                eval([tn 'vP.' vn '_clim(:,mi) = mean(' tn 'vP.' vn ...
+                      '(:,mi:12:end),2);']);
+            end
+            
+            % Subtract mean of season to avoid changing mean:
+            eval([tn 'vP.' vn '_clim = ' tn 'vP.' vn '_clim-repmat(mean(' ...
+                  tn 'vP.' vn '_clim,2),[1 12]);']);
+            
+            % Subtract seasonal cycle:
+            eval([tn 'vP.' vn ' = ' tn 'vP.' vn ' - repmat(' tn 'vP.' ...
+                  vn '_clim,[1 nyrs]);']);
+        end
     end
+        
+% $$$     if (PI_or_his)
+% $$$         PI.OHC = OHC;
+% $$$         save('PIcubicFit.mat','PI');
+% $$$     end
     
     % Calculate cumulative integral OHC (overwrite total - just anomalies now):
     TvP.Hp = rho0*Cp*cumsum(TvP.Tp,1)*dP/100.*repmat(Vtot',[PL 1]);
     ZvP.Hp = rho0*Cp*cumsum(ZvP.Tp,1)*dP/100.*repmat(Vtot',[PL 1]);
     YvP.Hp = rho0*Cp*cumsum(YvP.Tp,1)*dP/100.*repmat(Vtot',[PL 1]);
+    
+    % Calculate tendency term contributions to temperature:
+    for ti =1:length(typs)
+        for vi = 1:length(bvars)
+            tn = typs{ti};
+            vn = bvars{vi};
+            eval([tn 'vP.' vn(1:end-2) 'p = diff(' tn 'vP.' vn ',[],1)/rho0/' ...
+                                'Cp/dP*100./repmat(Vtot'',[PL-1 ' ...
+                  '1]);']);
+        end
+    end
     
     % Calc GMSST:
     CIN.GMSST = ZvP.Tp(1,:)';
@@ -319,16 +377,16 @@ OHC = squeeze(Zv.H_c(end,:))';
     CIN.TPI(1:(end-13*12)) = CIN.TPI(13*12:end-1);
     CIN.TPI((end-13*12+1):end) = 0;
     
-    % Calculate quantities for Time Of Emergence:
-    if (PI_or_his)
-    PIstd.stdZvP.Tp = std(ZvP.Tp,[],2);
-    PIstd.stdTvP.Tp = std(TvP.Tp,[],2);
-    PIstd.stdYvP.Tp = std(YvP.Tp,[],2);
-    PIstd.stdOHC = std(OHC,[],1);
-    save('PIstd.mat','PIstd');
-    else
-        load('PIstd.mat');
-    end
+% $$$     % Calculate quantities for Time Of Emergence:
+% $$$     if (PI_or_his)
+% $$$     PIstd.stdZvP.Tp = std(ZvP.Tp,[],2);
+% $$$     PIstd.stdTvP.Tp = std(TvP.Tp,[],2);
+% $$$     PIstd.stdYvP.Tp = std(YvP.Tp,[],2);
+% $$$     PIstd.stdOHC = std(OHC,[],1);
+% $$$     save('PIstd.mat','PIstd');
+% $$$     else
+% $$$         load('PIstd.mat');
+% $$$     end
 
 % $$$     %%%% Plot total heat content and fits time series:
 % $$$     figure;
@@ -694,18 +752,18 @@ OHC = squeeze(Zv.H_c(end,:))';
 
     xlims = [yr1 yr1+nyrs];
 
-% $$$     % ENSO Focus settings:
-% $$$     zlim = [0 10];
-% $$$     tlim = [0 10];
-% $$$     yylim = [40 85];
-% $$$     xlims = [300 350];
-% $$$     Zcxs = [-0.2 0.01 0.2];
-% $$$     Tcxs = [-0.2 0.01 0.2];
-% $$$     ycxs = [-0.2 0.01 0.2];
-% $$$ 
+    % ENSO Focus settings:
+    zlim = [0 10];
+    tlim = [0 10];
+    yylim = [40 85];
+    xlims = [300 350];
+    Zcxs = [-0.2 0.01 0.2];
+    Tcxs = [-0.2 0.01 0.2];
+    ycxs = [-0.2 0.01 0.2];
+
     [tmp t1] = min(abs(time-xlims(1)));
     [tmp t2] = min(abs(time-xlims(2)));
-
+    
     figure;
     set(gcf,'Position',[1 41 2560 1330]);
     set(gcf,'defaulttextfontsize',15);
@@ -816,6 +874,114 @@ OHC = squeeze(Zv.H_c(end,:))';
         ylabel(ax2,'Latitude ($^\circ$N)');
         ylim(ax2,yylim);
     end
+
+    %%%%%% Plot all anomalies time series:
+    xlims = [yr1 yr1+nyrs];
+
+    % ENSO Focus settings:
+    zlim = [0 10];
+    tlim = [0 10];
+    yylim = [40 85];
+    xlims = [300 350];
+    Zcxs = [-0.2 0.01 0.2];
+    Tcxs = [-0.2 0.01 0.2];
+    ycxs = [-0.2 0.01 0.2];
+
+    [tmp t1] = min(abs(time-xlims(1)));
+    [tmp t2] = min(abs(time-xlims(2)));
+    
+    bvars = {'TENp','ADVp','FORp','RMIXp','VMIXp'};
+
+    for ti =1:length(typs)
+        figure;
+        set(gcf,'Position',[1 41 2560 1330]);
+        set(gcf,'defaulttextfontsize',15);
+        set(gcf,'defaultaxesfontsize',15);
+        [X,Y] = ndgrid(time(t1:t2),Z_YvPar);
+
+        subplot(3,2,1);
+        contourf(X,Y,ZvPar(:,t1:t2)',[-1e50 Zcxs(1):Zcxs(2):Zcxs(3) 1e50],'linestyle','none');
+        caxis([Zcxs(1) Zcxs(3)]);
+        ylim(zlim);
+        xlim(xlims);
+        set(gca,'xticklabel',[]);
+        ylabel(zlab);
+        text(xlims(1)+(xlims(2)-xlims(1))*0.01,0.93*zlim(2),['ACCESS-CM2 PI-control ' Zlab ' anomalies'],'Backgroundcolor','w');
+        set(gca,'ydir','reverse');
+        
+        for vi = 1:length(bvars)
+    
+    [X,Y] = ndgrid(time(t1:t2),T_YvPar);
+    subplot(3,1,2);
+    contourf(X,Y,TvPar(:,t1:t2)',[-1e50 Tcxs(1):Tcxs(2):Tcxs(3) 1e50],'linestyle','none');
+    caxis([Tcxs(1) Tcxs(3)]);
+    ylim(tlim);
+    xlim(xlims);
+    colormap(redblue);
+% $$$     xlabel('Year');
+    set(gca,'xticklabel',[]);
+    ylabel(tlab);
+    cb = colorbar;
+    ylabel(cb,'Temperature Anomalies ($^\circ$C)','Interpreter','latex');
+    text(xlims(1)+(xlims(2)-xlims(1))*0.01,0.73*tlim(2),['ACCESS-CM2 PI-control ' Tlab ' anomalies'],'Backgroundcolor','w');
+    set(gca,'Position',[0.13 0.37 0.75 0.29]);
+    if (~remap_to_T)
+        set(gca,'ydir','reverse');
+        ax1=gca;
+        ax1_pos = ax1.Position; % position of first axes
+        ax1_pos(1) = ax1_pos(1)*0.7;
+        ax1_pos(3) = 0.00001;
+        ax2 = axes('Position',ax1_pos,...
+                   'Color','none');
+        set(ax2,'FontSize',15);
+% $$$         Zticks = [30 18 12:-2:-2];
+        Zticks = [30 15 10:-2:0];
+% $$$         Zticks = [30 22 18 16:-2:8];
+% $$$         Zticks = [2:-0.25:-0.5 -2];
+        Pticks = zeros(size(Zticks));
+        for ii=1:length(Zticks)
+            Pticks(ii) = interp1(TvP.Tp_mean,P,Zticks(ii),'linear');
+        end
+        set(ax2,'ytick',Pticks);
+        set(ax2,'yticklabel',Zticks);
+        ylabel(ax2,'Temperature ($^\circ$C)');
+        ylim(ax2,zlim);
+        set(ax2,'ydir','reverse');
+    end
+
+    [X,Y] = ndgrid(time(t1:t2),y_YvPar);
+    subplot(3,1,3);
+    contourf(X,Y,yvar(:,t1:t2)',[-1e50 ycxs(1):ycxs(2):ycxs(3) 1e50],'linestyle','none');
+    caxis([ycxs(1) ycxs(3)]);
+    ylim(yylim);
+    xlim(xlims);
+    xlabel('Year');
+    ylabel(ylab);
+% $$$     cb = colorbar;
+% $$$     ylabel(cb,'Temperature Anomalies ($^\circ$C)','Interpreter','latex');
+    text(xlims(1)+(xlims(2)-xlims(1))*0.01,83,['ACCESS-CM2 PI-control ' Ylab ' anomalies'],'Backgroundcolor','w');
+    set(gca,'Position',[0.13 0.05 0.75 0.29]);
+    if (~remap_to_T)
+        ax1=gca;
+        ax1_pos = ax1.Position; % position of first axes
+        ax1_pos(1) = ax1_pos(1)*0.7;
+        ax1_pos(3) = 0.00001;
+        ax2 = axes('Position',ax1_pos,...
+                   'Color','none');
+        set(ax2,'FontSize',15);
+        Zticks = [-75:15:60];
+        Pticks = zeros(size(Zticks));
+        for ii=1:length(Zticks)
+            Pticks(ii) = interp1(yofP_mean,P,Zticks(ii),'linear');
+        end
+        Pticks(1) = 0;
+        set(ax2,'ytick',Pticks);
+        set(ax2,'yticklabel',Zticks);
+        ylabel(ax2,'Latitude ($^\circ$N)');
+        ylim(ax2,yylim);
+    end
+
+
 % $$$ 
 % $$$     % Time series to go with that:
 % $$$     figure;

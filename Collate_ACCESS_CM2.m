@@ -5,15 +5,27 @@ name = 'PIcontrol';
 
 files = dir([base 'CM2_' name '_*.mat']);
 
-load([base files(1).name]);
+% Fix order:
+nums = [];
+for fi=1:length(files)
+    fname = files(fi).name;
+    if (length(fname)==26)
+        num = str2num(fname(15:22));
+        nums = cat(1,nums,num);
+    end
+end
+
+nums = sort(nums);
+
+load(sprintf([base 'CM2_' name '_%08d.mat'],nums(1)));
 CINfields = fieldnames(CIN);
 Tvfields = fieldnames(Tv);
 Zvfields = fieldnames(Zv);
 Yvfields = fieldnames(Yv);
 
-for fi = 2:length(files)
-    fname = [base files(fi).name]
-    next = load([base files(fi).name]);
+for fi = 2:length(nums)
+    fname = sprintf([base 'CM2_' name '_%08d.mat'],nums(fi));
+    next = load(fname);
 
     time = cat(1,time,next.time);
     DT_A = cat(1,DT_A,next.DT_A);
