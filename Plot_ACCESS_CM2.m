@@ -1,635 +1,391 @@
-% Plotting for HC variability project
+%%%% Plotting scripts for HC variability project
 
-clear all;
-PI_or_his = 1; % 1 = PI-control, 0 = historical simualtion
-if (PI_or_his)
-    load('CM2_PIcontrol_ALL.mat');
+%%% Percentile converter:
+Ps = [10 50 95];
+for pi=1:length(Ps)
+    [tmp pii] = min(abs(P-Ps(pi)));
+    sprintf(['Percentile %3.1f is %5.1fm, %3.1fC, %3.1f degrees ' ...
+             'latitude'],Ps(pi),-ZvP.mean(pii),TvP.mean(pii), ...
+            YvP.mean(pii))
+end
+
+%%%% Plot total heat content and fits time series:
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+figure;
+set(gcf,'Position',[1 41 2560 1327.3]);
+subplot(5,1,1);
+plot(time,filter_field(CIN.N34,5,'-t'));
+hold on;
+plot(time,CIN.GMSST*10,'-r');
+legend('Nino 3.4','Global Mean SST Anomalies * 10');
+xlabel('Year');
+ylabel('SST ($^\circ$C)');
+xlim([yr1 yr1+nyrs]);
+
+subplot(5,1,2);
+plot(time,OHC,'-k');
+hold on;
+plot(time,OHCfull,'-b');
+plot(time,OHC_cub,'-r');
+legend('OHC dedrifted','OHC deseasoned','OHC cubic fix');
+xlabel('Year');
+ylabel('Ocean Heat Content (J)');
+xlim([yr1 yr1+nyrs]);
+
+subplot(5,1,3);
+plot(time,OHC,'-k');
+hold on;
+plot(time,TvP.Hp(end,:),'--g');
+plot(time,ZvP.Hp(end,:),'--c');
+plot(time,YvP.Hp(end,:),'--y');
+legend('OHC dedrifted',...
+       'OHC from cumsum(TvP.Tp)','OHC from cumsum(ZvP.Tp)','OHC from cumsum(YvP.Tp)');
+xlabel('Year');
+ylabel('Ocean Heat Content (J)');
+xlim([yr1 yr1+nyrs]);
+
+subplot(5,1,4);
+plot(time,CIN.AMOCfull,'-k');
+hold on;
+plot(time,filter_field(CIN.AMOCfull,5*12+1,'-t'),'-k','linewidth',2);
+xlabel('Year');
+ylabel('AMOC at $26^\circ$N (Sv)');
+xlim([yr1 yr1+nyrs]);
+
+subplot(5,1,5);
+plot(time,CIN.WPOW,'-k');
+hold on;
+plot(time,filter_field(CIN.WPOW,5*12+1,'-t'),'-k','linewidth',2);
+xlabel('Year');
+ylabel('Total Wind Power (W)');
+xlim([yr1 yr1+nyrs]);
+
+%%% Time of emergence/historical OHC:
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+figure;
+plot(time,OHC,'-k');
+hold on;
+
+plot([50 600],[1 1]*2*PIstd.stdOHC,'--k');
+plot([50 600],[1 1]*-2*PIstd.stdOHC,'--k');
+xlabel('Year');
+ylabel('OHC (J)');
+
+figure;
+plot(PIstd.stdZvP.Tp*2,P,'-k');
+hold on;
+plot(PIstd.stdTvP.Tp*2,P,'-r');
+plot(PIstd.stdYvP.Tp*2,P,'-b');
+xlabel('2$\sigma$ variability amplitude ($^\circ$C)');
+ylabel('Percentile');
+legend('$\Theta(p_z)$','$\Theta(p_\Theta)$',['$\Theta(p_\' ...
+                    'phi)$']);
+
+% Example time series:
+pii = 20;
+[tmp piii] = min(abs(P-pii));
+figure;
+plot(time,ZvP.Tp(piii,:),'-k','linewidth',2);
+hold on;
+plot(time,TvP.Tp(piii,:),'-r','linewidth',2);
+plot([time(1) time(end)],[1 1]*2*PIstd.stdZvP.Tp(piii),'--k');
+plot([time(1) time(end)],[1 1]*-2*PIstd.stdZvP.Tp(piii),'--k');
+plot([time(1) time(end)],[1 1]*2*PIstd.stdTvP.Tp(piii),'--r');
+plot([time(1) time(end)],[1 1]*-2*PIstd.stdTvP.Tp(piii),'--r');
+
+% Choose whether to remap to T for y-axis:
+remap_to_T = 0;
+if (remap_to_T)
+    
+    Z_YvPar = ZvP.Tp_mean;
+    zlim = [-2 34];
+    zlab = 'Horizontally-averaged Temperature ($^\circ$C)';
+
+    T_YvPar = TvP.Tp_mean;
+    tlim = [-2 34];
+    tlab = 'Percentile-averaged Temperature ($^\circ$C)';
+    
+    y_YvPar = YvP.Tp_mean;
+    yylim = [-80 80];
+    ylab = 'Vertical/zonal-averaged Temperature ($^\circ$C)';
 else
-    load('CM2_historical_ALL.mat');
-end
+    Z_YvPar = P;
+    zlim = [0 100];
+    zlab = 'Depth Percentile $p_z$';
 
-%%% POST PROCESSING
-
-% Define a new percentile grid:
-dP = 0.25;
-Pe = 0:dP:100;
-P = (Pe(2:end)+Pe(1:end-1))/2;
-PL = length(P);
-
-% Time vector:
-tL = length(time);
-time = time/365.25; % time in years
-
-% Fix advection budget term by residual:
-typs = {'T','Z','Y'};
-vars = {'temp_submeso', 'temp_vdiffuse_diff_cbt', 'temp_nonlocal_KPP', ...
-        'temp_vdiffuse_sbc','frazil_3d','sw_heat','temp_rivermix', ...
-        'neutral_diffusion_temp','neutral_gm_temp', 'temp_vdiffuse_k33', 'mixdownslope_temp', ...
-        'temp_sigma_diff','sfc_hflux_pme','temp_eta_smooth'};    
-for ty = 1:length(typs)
-    eval([typs{ty} 'v.temp_advection = ' typs{ty} 'v.temp_tendency;']);
-    for vi=1:length(vars)
-        eval([typs{ty} 'v.temp_advection = ' typs{ty} 'v.temp_advection ' ...
-                       ' - ' typs{ty} 'v.' vars{vi} ';']);
-    end
-end
-
-% group budget terms:
-for vi = 1:length(typs)
-    eval([typs{vi} 'v.TEN = ' typs{vi} 'v.temp_tendency;']);
-    eval([typs{vi} 'v.ADV = ' typs{vi} 'v.temp_advection+' typs{vi} 'v.temp_submeso+' typs{vi} 'v.neutral_gm_temp;']);
-    eval([typs{vi} 'v.FOR = ' typs{vi} 'v.temp_vdiffuse_sbc+' typs{vi} 'v.frazil_3d+' typs{vi} 'v.sw_heat' ...
-          '+' typs{vi} 'v.temp_rivermix+' typs{vi} 'v.sfc_hflux_pme' ...
-          '+' typs{vi} 'v.temp_eta_smooth;']);
-    eval([typs{vi} 'v.RMIX = ' typs{vi} 'v.neutral_diffusion_temp+' typs{vi} 'v.temp_vdiffuse_k33+' typs{vi} 'v.mixdownslope_temp' ...
-          '+' typs{vi} 'v.temp_sigma_diff;']);
-    eval([typs{vi} 'v.VMIX = ' typs{vi} 'v.temp_vdiffuse_diff_cbt+' typs{vi} 'v.temp_nonlocal_KPP;']);
-end
-vars = {vars{:},'temp_tendency','temp_advection'};
-for vi =1:length(vars)
-    eval(['Tv = rmfield(Tv,''' vars{vi} ''');']);
-    eval(['Yv = rmfield(Yv,''' vars{vi} ''');']);
-    eval(['Zv = rmfield(Zv,''' vars{vi} ''');']);
-end
-
-% Do cumulative sums:
-fnames = fieldnames(Zv);
-for vi =1:length(fnames)
-    eval(['Zv.' fnames{vi} '_c = cat(1,zeros(1,tL),cumsum(Zv.' ...
-          fnames{vi} ',1));']);
-end
-fnames = fieldnames(Yv);
-for vi =1:length(fnames)
-    eval(['Yv.' fnames{vi} '_c = cat(1,zeros(1,tL),cumsum(Yv.' ...
-          fnames{vi} ',1));']);
-end
-fnames = fieldnames(Tv);
-for vi =1:length(fnames)
-    eval(['Tv.' fnames{vi} '_c = cat(1,cumsum(Tv.' ...
-          fnames{vi} ',1,''reverse''),zeros(1,tL));']);
-end
-
-OHC = squeeze(Zv.H_c(end,:))';
-
-% $$$ %%% New approach: Interpolate HC
-% $$$     % Interpolate only high-resolution grids for smoothness:
-% $$$     zfac = 1;
-% $$$ % $$$     Zv.H_c = interp1(Zv.H_c,1:1/zfac:(zL+1));Zv.V_c = interp1(Zv.V_c,1:1/zfac:(zL+1));
-% $$$     Tfac = 1;
-% $$$ % $$$     Tv.H_c = interp1(Tv.H_c,1:1/Tfac:(TL+1));Tv.V_c = interp1(Tv.V_c,1:1/Tfac:(TL+1));
-% $$$     yfac = 1;
-% $$$ % $$$     Yv.H_c = interp1(Yv.H_c,1:1/yfac:(yL+1));Yv.V_c = interp1(Yv.V_c,1:1/yfac:(yL+1));
-% $$$ 
-% $$$     % Remap to ocean percentile
-% $$$     Vtot = Zv.V_c(end,:)';
-% $$$     Tv.P   = 100*Tv.V_c./repmat(Vtot',[TL*Tfac+1 1]);
-% $$$     Zv.P   = 100*Zv.V_c./repmat(Vtot',[zL*zfac+1 1]);
-% $$$     Yv.P   = 100*Yv.V_c./repmat(Vtot',[yL*yfac+1 1]);
-% $$$ 
-% $$$     ZvP.Hp = zeros(PL+1,tL);
-% $$$     YvP.Hp = zeros(PL+1,tL);
-% $$$     TvP.Hp = zeros(PL+1,tL);
-% $$$     for ti = 1:tL
-% $$$         ZvP.Hp(:,ti) = interp1((Zv.P(:,ti)+(1:zL*zfac+1)'/1e10),Zv.H_c(:,ti),Pe,'linear');
-% $$$         YvP.Hp(:,ti) = interp1((Yv.P(:,ti)+(1:yL*yfac+1)'/1e10),Yv.H_c(:,ti),Pe,'linear');
-% $$$         TvP.Hp(:,ti) = interp1((Tv.P(:,ti)+(1:TL*Tfac+1)'/1e10),Tv.H_c(:,ti),Pe,'linear');
-% $$$     end
-% $$$     ZvP.Hp(1,:) = 0;
-% $$$     YvP.Hp(1,:) = 0;
-% $$$     TvP.Hp(1,:) = 0;
-% $$$ 
-% $$$     % Calculate temperatures from HC:
-% $$$     ZvP.Tp = (ZvP.Hp(2:end,:)-ZvP.Hp(1:(end-1),:))/rho0/Cp*100/dP./repmat(Vtot',[PL 1]);
-% $$$     YvP.Tp = (YvP.Hp(2:end,:)-YvP.Hp(1:(end-1),:))/rho0/Cp*100/dP./repmat(Vtot',[PL 1]);
-% $$$     TvP.Tp = (TvP.Hp(2:end,:)-TvP.Hp(1:(end-1),:))/rho0/Cp*100/dP./repmat(Vtot',[PL 1]);
-% $$$ 
-% $$$     zofP_mean = -interp1(mean(Zv.P(1:zfac:end,:),2),Ze,P,'linear'); % Depth axis to
-% $$$                                                     % go with depth-volume
-% $$$     yofP_mean = interp1(mean(Yv.P(1:yfac:end,:),2)+(1:yL+1)'/1e10,latv_edges,P,'linear'); % Depth axis to
-% $$$                                                     % go with depth-volume
-
-    %%% Old approach: Interpolate temperatures
-    % Remap to ocean percentile
-    Vtot = Zv.V_c(end,:)';
-    Atot = Tv.A_c(1,:)';
-    Tv.P   = 100*Tv.V_c./repmat(Vtot',[TL+1 1]);
-    Zv.P   = 100*Zv.V_c./repmat(Vtot',[zL+1 1]);
-    Yv.P   = 100*Yv.V_c./repmat(Vtot',[yL+1 1]);
-    Tv.Pa  = 100*Tv.A_c./repmat(Atot',[TL+1 1]);
-
-    % Calculate z-temperature:
-    Zv.T = Zv.H/rho0/Cp./Zv.V;
-    Zv.Te = cat(1,Zv.T(1,:),(Zv.T(2:end,:)+Zv.T(1:end-1,:))/2,Zv.T(end,:));
-
-    % Calculate y-temperature:
-    Yv.T = Yv.H/rho0/Cp./Yv.V;
-    Yv.Te = cat(1,Yv.T(1,:),(Yv.T(2:end,:)+Yv.T(1:end-1,:))/2,Yv.T(end,:));
-
-    % Interpolate variables to P levels:
-    TvP.Tp = zeros(PL,tL);
-    TvP.Tap = zeros(PL,tL);
-    ZvP.Tp = zeros(PL,tL);
-    YvP.Tp = zeros(PL,tL);
-    bvars = {'TEN_c','ADV_c','FOR_c','RMIX_c','VMIX_c'};
-    for ti = 1:tL
-        TvP.Tp(:,ti) = interp1(Tv.P(:,ti)+(1:TL+1)'/1e10,Te,P,'linear');
-        TvP.Tp(1,ti) = Te(end);
-        TvP.Tap(:,ti) = interp1(Tv.Pa(:,ti)+(1:TL+1)'/1e10,Te,P,'linear');
-        TvP.Tap(1,ti) = Te(end);
-        ZvP.Tp(:,ti) = interp1(Zv.P(:,ti)+(1:zL+1)'/1e10,Zv.Te(:,ti),P,'linear');
-        YvP.Tp(:,ti) = interp1(Yv.P(:,ti)+(1:yL+1)'/1e10,Yv.Te(:,ti),P,'linear');
-        for vi=1:length(bvars)
-            eval(['ZvP.' bvars{vi} '(:,ti) = interp1(Zv.P(:,ti)+(1:zL+1)''/1e10,Zv.' bvars{vi} '(:,ti),P,''linear'');']);
-            eval(['YvP.' bvars{vi} '(:,ti) = interp1(Yv.P(:,ti)+(1:yL+1)''/1e10,Yv.' bvars{vi} '(:,ti),P,''linear'');']);
-            eval(['TvP.' bvars{vi} '(:,ti) = interp1(Tv.P(:,ti)+(1:TL+1)''/1e10,Tv.' bvars{vi} '(:,ti),P,''linear'');']);
-        end
-    end
+    T_YvPar = P;
+    tlim = zlim;
+    tlab = 'Temperature Percentile $p_\Theta$';
     
-% $$$     %% Check budgets:
-% $$$     colors = {'m','b','k','r',[0 0.5 0]};     
-% $$$     figure;
-% $$$     subplot(1,3,1);
-% $$$     for gi=1:length(bvars)
-% $$$         eval(['var = mean(ZvP.' bvars{gi} ',2);']);
-% $$$         plot(var/1e15,P,'-','color',colors{gi});
-% $$$         hold on;
-% $$$     end
-% $$$     ylabel('Depth percentile');
-% $$$     set(gca,'ydir','reverse');
-% $$$     ylim([0 100]);
-% $$$     xlim([-2 2]);
-% $$$     xlabel('Vertical heat transport (PW)');
-% $$$     
-% $$$     subplot(1,3,2);
-% $$$     for gi=1:length(bvars)
-% $$$         eval(['var = mean(TvP.' bvars{gi} ',2);']);
-% $$$         plot(var/1e15,P,'-','color',colors{gi});
-% $$$         hold on;
-% $$$     end
-% $$$     legend('Tendency','Advection','Surface Forcing','Neutral Mixing','Vertical Mixing');
-% $$$     set(gca,'ydir','reverse');
-% $$$     ylim([0 100]);
-% $$$     ylabel('Temperature percentile');
-% $$$     xlabel('Diathermal heat transport (PW)');
-% $$$ 
-% $$$     subplot(1,3,3);
-% $$$     for gi=1:length(bvars)
-% $$$         eval(['var = mean(YvP.' bvars{gi} ',2);']);
-% $$$         plot(var/1e15,P,'-','color',colors{gi});
-% $$$         hold on;
-% $$$     end
-% $$$     ylim([0 100]);
-% $$$     ylabel('Latitude percentile');
-% $$$     xlabel('Meridional heat transport (PW)');
-
-
-    zofP_mean = -interp1(mean(Zv.P,2),Ze,P,'linear'); % Depth axis to
-                                                    % go with depth-volume
-    yofP_mean = interp1(mean(Yv.P,2)+(1:yL+1)'/1e10,latv_edges,P,'linear'); % Depth axis to
-                                                    % go with depth-volume
-
-    % Time-integrate budget terms:
-    for ti =1:length(typs)
-        for vi=1:length(bvars)
-            eval([typs{ti} 'vP.' bvars{vi} ' = cumsum(' typs{ti} ...
-                  'vP.' bvars{vi} '.*repmat(DT_A'',[PL 1]),2);']);
-        end
-    end    
+    y_YvPar = P;
+    yylim = zlim;
+    ylab = 'Latitude Percentile $p_\phi$';
+end        
     
-    % Construct climatology and make years even:
-    if (PI_or_his)
-        yr1 =50; % initial years to throw out
-% $$$         yr1 =0;
+%%%%% Plot mean, climatology, std and trends:
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+figure;
+set(gcf,'Position',[1 41 2560 1330]);
+
+subplot(3,4,1);
+plot(ZvP.Tp_mean,P,'linewidth',2);
+xlabel('Temperature ($^\circ$C)');
+xlim([-2 34]);
+ylabel('Depth Percentile');
+ylim([0 100]);
+title('ACCESS-CM2 PI-control mean $\Theta(z)$');
+set(gca,'ydir','reverse')
+
+subplot(3,4,2);
+[X,Y] = ndgrid(1:12,Z_YvPar);
+contourf(X,Y,ZvP.Tp_clim',[-10 -0.2:0.002:0.2 10],'linestyle','none');
+xlabel('Month');
+ylabel(zlab);
+ylim(zlim);
+title('ACCESS-CM2 PI-control $\Theta(p_z)$ seasonal cycle');
+caxis([-0.2 0.2]);
+colorbar;
+if (~remap_to_T);set(gca,'ydir','reverse');end;
+
+subplot(3,4,3);
+plot(std(ZvP.Tp_clim,[],2),Z_YvPar,'linewidth',2);
+hold on;
+plot(std(ZvP.Tp,[],2),Z_YvPar,'-r','linewidth',2);
+xlabel('std(Temperature) ($^\circ$C)');
+legend('Seasonal Climatology','Anomalies');
+ylabel(zlab);
+ylim(zlim);
+xlim([0 0.3]);
+title('ACCESS-CM2 PI-control variability $\Theta(p_z)$');
+if (~remap_to_T);set(gca,'ydir','reverse');end;
+
+subplot(3,4,4);
+plot(ZvP.Tp_cubtr(2,:)',P,'linewidth',2);
+xlabel('Temperature trend ($^\circ$C/year)');
+ylabel('Depth Percentile');
+ylim(zlim);
+xlim([-1.5e-3 1.5e-3]);
+title('ACCESS-CM2 PI-control linear trend $\Theta(p_z)$');
+if (~remap_to_T);set(gca,'ydir','reverse');end;
+
+subplot(3,4,5);
+plot(TvP.Tp_mean,P,'linewidth',2);
+xlabel('Temperature ($^\circ$C)');
+xlim([-2 34]);
+ylim([0 100]);
+ylabel('Temperature Percentile');
+title('ACCESS-CM2 PI-control mean $\Theta(p)$');
+set(gca,'ydir','reverse')
+
+subplot(3,4,6);
+[X,Y] = ndgrid(1:12,T_YvPar);
+contourf(X,Y,TvP.Tp_clim',[-10 -0.2:0.002:0.2 10],'linestyle','none');
+xlabel('Month');
+ylabel(tlab);
+title('ACCESS-CM2 PI-control $\Theta(p_\Theta)$ seasonal cycle');
+colorbar;
+colormap(redblue);
+caxis([-0.2 0.2]);
+ylim(tlim);
+if (~remap_to_T);set(gca,'ydir','reverse');end;
+
+subplot(3,4,7);
+plot(std(TvP.Tp_clim,[],2),T_YvPar,'linewidth',2);
+hold on;
+plot(std(TvP.Tp,[],2),T_YvPar,'-r','linewidth',2);
+xlabel('std(Temperature) ($^\circ$C)');
+legend('Seasonal Climatology','Anomalies');
+ylim(yylim);
+xlim([0 0.3]);
+ylabel(ylab);
+title('ACCESS-CM2 PI-control variability $\Theta(p_\Theta)$');
+if (~remap_to_T);set(gca,'ydir','reverse');end;
+% $$$     set(gca,'Position',[0.1300    0.5838    0.2504    0.3412]);
+
+subplot(3,4,8);
+plot(TvP.Tp_cubtr(2,:)',T_YvPar,'linewidth',2);
+xlabel('Temperature trend ($^\circ$C/year)');
+xlim([-1.5e-3 1.5e-3]);
+ylim(yylim);
+ylabel(ylab);
+title('ACCESS-CM2 PI-control linear trend $\Theta(p_\Theta)$');
+if (~remap_to_T);set(gca,'ydir','reverse');end;
+
+subplot(3,4,9);
+plot(YvP.Tp_mean,P,'linewidth',2);
+xlabel('Temperature ($^\circ$C)');
+xlim([-1 6.5]);
+ylim([0 100]);
+ylabel('Latitude Percentile');
+title('ACCESS-CM2 PI-control mean $\phi(p)$');
+
+subplot(3,4,10);
+[X,Y] = ndgrid(1:12,y_YvPar);
+contourf(X,Y,YvP.Tp_clim',[-10 -0.2:0.002:0.2 10],'linestyle','none');
+xlabel('Month');
+ylabel(ylab);
+title('ACCESS-CM2 PI-control $\Theta(p_\phi)$ seasonal cycle');
+colorbar;
+colormap(redblue);
+caxis([-0.2 0.2]);
+ylim(yylim);
+
+subplot(3,4,11);
+plot(std(YvP.Tp_clim,[],2),y_YvPar,'linewidth',2);
+hold on;
+plot(std(YvP.Tp,[],2),y_YvPar,'-r','linewidth',2);
+xlabel('std(Temperature) ($^\circ$C)');
+legend('Seasonal Climatology','Anomalies');
+ylim(yylim);
+xlim([0 0.3]);
+ylabel(ylab);
+title('ACCESS-CM2 PI-control variability $\Theta(p_\phi)$');
+% $$$     set(gca,'Position',[0.1300    0.5838    0.2504    0.3412]);
+
+subplot(3,4,12);
+plot(YvP.Tp_cubtr(2,:)',y_YvPar,'linewidth',2);
+xlabel('Temperature trend ($^\circ$C/year)');
+xlim([-1.5e-3 1.5e-3]);
+ylim(yylim);
+ylabel(ylab);
+title('ACCESS-CM2 PI-control linear trend $\Theta(p_\phi)$');
+
+%%%%% Plot seasonal cycle and budget terms: %%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+bvars = {'TENp','ADVp','FORp','RMIXp','VMIXp'};
+names = {'Tendency','Advection','Forcing', ...
+         'Redi Mixing','Vertical Mixing'};
+
+% Depth percentile:
+Zcxs = [-0.3 0.01 0.3];Zlab = '$\Theta(p_z)$';
+zlim = [0 10];zlab = 'Depth Percentile $p_z$';
+
+figure;
+set(gcf,'Position',[1          36        1920         970]);
+set(gcf,'defaulttextfontsize',15);
+set(gcf,'defaultaxesfontsize',15);
+
+[X,Y] = ndgrid(1:12,P);
+subplot(3,2,1);
+contourf(X,Y,ZvP.Tp_clim',[-1e50 Zcxs(1):Zcxs(2):Zcxs(3) 1e50],'linestyle','none');
+caxis([Zcxs(1) Zcxs(3)]);
+ylim(zlim);
+ylabel(zlab);
+set(gca,'ydir','reverse');
+set(gca,'xticklabel',[]);
+title(['Seasonal ' Zlab ' Anomalies']);
+cb = colorbar;
+ylabel(cb,'$^\circ$C');
+
+for vi = 1:length(bvars)
+    [X,Y] = ndgrid(1:12,Pe);
+    eval(['var = ZvP.' bvars{vi} '_clim;']);
+    subplot(3,2,1+vi);
+    contourf(avg(X,2),avg(Y,2),var',[-1e50 Zcxs(1):Zcxs(2):Zcxs(3) 1e50],'linestyle','none');
+    caxis([Zcxs(1) Zcxs(3)]);
+    ylim(zlim);
+    if (vi<4)
+        set(gca,'xticklabel',[]);
     else
-        yr1 = 0;
+        xlabel('Month');
     end
-    nyrs = floor(tL/12)-yr1; % number of years
-    tL = nyrs*12; % number of months
-    ti = yr1*12+1; % starting month
-    
-    for ty = 1:length(typs)
-        eval(['fnames = fieldnames(' typs{ty} 'vP);']);
-        for vi =1:length(fnames)
-            eval([typs{ty} 'vP.' fnames{vi} ' = ' typs{ty} 'vP.' fnames{vi} '(:,ti:(ti+tL-1));']);
-        end
-        eval(['fnames = fieldnames(' typs{ty} 'v);']);
-        for vi =1:length(fnames)
-            eval([typs{ty} 'v.' fnames{vi} ' = ' typs{ty} 'v.' fnames{vi} '(:,ti:(ti+tL-1));']);
-        end
-    end
-% $$$     TvP.Tp = TvP.Tp(:,ti:(ti+tL-1));
-% $$$     TvP.Tap = TvP.Tap(:,ti:(ti+tL-1));
-% $$$     ZvP.Tp = ZvP.Tp(:,ti:(ti+tL-1)); 
-% $$$     YvP.Tp = YvP.Tp(:,ti:(ti+tL-1)); 
-    TIMESERIES = {'CIN.N34','CIN.TPIr1','CIN.TPIr2','CIN.TPIr3','OHC','CIN.AMOC','CIN.WPOW'};
-    for vi=1:length(TIMESERIES)
-        eval([TIMESERIES{vi} ' = ' TIMESERIES{vi} '(ti:(ti+tL-1));']);
-    end
-    time = time(ti:(ti+tL-1));
-    Vtot = Vtot(ti:(ti+tL-1));
-    CIN.AMOCfull = CIN.AMOC;
-    OHCfull = OHC;
-        
-    % Calculate cubic drift trend and subtract:
-    fnames = fieldnames(TvP);
-    ZvP.Tap = TvP.Tap;
-    YvP.Tap = TvP.Tap; % for convience -> delete after...
-    if (PI_or_his)
-        
-    for ti = 1:length(typs)
-        for vi = 1:length(fnames)
-            tn = typs{ti};
-            vn = fnames{vi};
-
-            % Mean:
-            eval([tn 'vP.' vn '_mean = mean(' tn 'vP.' vn ',2);']);
-            
-            % Calculate cubic trend:
-            eval([tn 'vP.' vn '_cub = zeros(tL,PL);']);
-            eval([tn 'vP.' vn '_cubtr = zeros(4,PL);']);
-            for pi=1:PL
-                eval(['[' tn 'vP.' vn '_cub(:,pi),' tn 'vP.' tn ...
-                      '_cubtr(:,pi)] = cubfit(time,' tn 'vP.' vn ...
-                      '(pi,:)'');']);
-            end
-            eval([tn 'vP.' vn '_cub = ' tn 'vP.' vn '_cub'';']);
-            
-            % subtract cubic trend:
-            eval([tn 'vP.' vn ' = ' tn 'vP.' vn '-' tn 'vP.' vn '_cub;']);
-            
-        end
-    end
-    [OHC_cub,OHC_cubtr] = cubfit(time,OHC);
-    OHC = OHC-OHC_cub;
-    
-% $$$     PI.ZvP.Tp_cubtr = ZvP.Tp_cubtr;
-% $$$     PI.TvP.Tp_cubtr = TvP.Tp_cubtr;
-% $$$     PI.YvP.Tp_cubtr = YvP.Tp_cubtr;
-% $$$     PI.time = time;
-% $$$     PI.OHCfull = OHCfull;
-% $$$     PI.OHC = OHC;
-% $$$     PI.OHC_cubtr = OHC_cubtr;
-% $$$     PI.TvP.Tp_mean = TvP.Tp_mean;
-% $$$     PI.YvP.Tp_mean = YvP.Tp_mean;
-% $$$     PI.ZvP.Tp_mean = ZvP.Tp_mean;
-% $$$     save('PIcubicFit.mat','PI');
-
-    else
-        ' NOT ADJUSTED YET!'
-% $$$         Itime = -100;
-% $$$         load('PIcubicFit.mat');
-% $$$         TvP.Tp_mean = PI.TvP.Tp_mean;
-% $$$         YvP.Tp_mean = PI.YvP.Tp_mean;
-% $$$         ZvP.Tp_mean = PI.ZvP.Tp_mean;
-% $$$ 
-% $$$         TvP.Tp_cub = zeros(tL,PL);
-% $$$         TvP.Tap_cub = zeros(tL,PL);
-% $$$         ZvP.Tp_cub = zeros(tL,PL);
-% $$$         YvP.Tp_cub = zeros(tL,PL);
-% $$$         
-% $$$         t = time-Itime;
-% $$$         t2 = (time-Itime).^2;
-% $$$         t3 = (time-Itime).^3;
-% $$$         
-% $$$         for pi = 1:PL
-% $$$             TvP.Tp_cub(:,pi) = PI.TvP.Tp_cubtr(1,pi)+PI.TvP.Tp_cubtr(2,pi).*t ...
-% $$$                           + PI.TvP.Tp_cubtr(3,pi).*t2 + PI.TvP.Tp_cubtr(4,pi).*t3;
-% $$$             YvP.Tp_cub(:,pi) = PI.YvP.Tp_cubtr(1,pi)+PI.YvP.Tp_cubtr(2,pi).*t ...
-% $$$                           + PI.YvP.Tp_cubtr(3,pi).*t2 + PI.YvP.Tp_cubtr(4,pi).*t3;
-% $$$             ZvP.Tp_cub(:,pi) = PI.ZvP.Tp_cubtr(1,pi)+PI.ZvP.Tp_cubtr(2,pi).*t ...
-% $$$                           + PI.ZvP.Tp_cubtr(3,pi).*t2 + PI.ZvP.Tp_cubtr(4,pi).*t3;
-% $$$         end
-% $$$         OHC_cub = PI.OHC_cubtr(1)+PI.OHC_cubtr(2).*t + ...
-% $$$                   PI.OHC_cubtr(3).*t2 + PI.OHC_cubtr(4).*t3;
-% $$$     
-% $$$         % subtract cubear trend:
-% $$$         TvP.Tp = TvP.Tp-TvP.Tp_cub';
-% $$$         ZvP.Tp = ZvP.Tp-ZvP.Tp_cub';
-% $$$         YvP.Tp = YvP.Tp-YvP.Tp_cub';
-% $$$         OHC = OHC-OHC_cub;
-% $$$         
-% $$$         % Set date:
-% $$$         time = time+1850;
-% $$$         yr1 = 1850;
-    end
-        
-    for vi=1:length(TIMESERIES)
-        eval([TIMESERIES{vi} '_clim = zeros(12,1);']);
-        for mi=1:12
-            eval([TIMESERIES{vi} '_clim(mi) = mean(' TIMESERIES{vi} ...
-                  '(mi:12:end));']);
-        end
-        eval([TIMESERIES{vi} ' = ' TIMESERIES{vi} ...
-              ' - repmat(' TIMESERIES{vi} '_clim,[nyrs 1]);']);
-    end
-
-    for ti = 1:length(typs)
-        for vi = 1:length(fnames)
-            tn = typs{ti};
-            vn = fnames{vi};
-
-            % Calculate Seasonal cycle:
-            eval([tn 'vP.' vn '_clim = zeros(PL,12);']);
-            for mi=1:12
-                eval([tn 'vP.' vn '_clim(:,mi) = mean(' tn 'vP.' vn ...
-                      '(:,mi:12:end),2);']);
-            end
-            
-            % Subtract mean of season to avoid changing mean:
-            eval([tn 'vP.' vn '_clim = ' tn 'vP.' vn '_clim-repmat(mean(' ...
-                  tn 'vP.' vn '_clim,2),[1 12]);']);
-            
-            % Subtract seasonal cycle:
-            eval([tn 'vP.' vn ' = ' tn 'vP.' vn ' - repmat(' tn 'vP.' ...
-                  vn '_clim,[1 nyrs]);']);
-        end
-    end
-        
-% $$$     if (PI_or_his)
-% $$$         PI.OHC = OHC;
-% $$$         save('PIcubicFit.mat','PI');
-% $$$     end
-    
-    % Calculate cumulative integral OHC (overwrite total - just anomalies now):
-    TvP.Hp = rho0*Cp*cumsum(TvP.Tp,1)*dP/100.*repmat(Vtot',[PL 1]);
-    ZvP.Hp = rho0*Cp*cumsum(ZvP.Tp,1)*dP/100.*repmat(Vtot',[PL 1]);
-    YvP.Hp = rho0*Cp*cumsum(YvP.Tp,1)*dP/100.*repmat(Vtot',[PL 1]);
-    
-    % Calculate tendency term contributions to temperature:
-    for ti =1:length(typs)
-        for vi = 1:length(bvars)
-            tn = typs{ti};
-            vn = bvars{vi};
-            eval([tn 'vP.' vn(1:end-2) 'p = diff(' tn 'vP.' vn ',[],1)/rho0/' ...
-                                'Cp/dP*100./repmat(Vtot'',[PL-1 ' ...
-                  '1]);']);
-        end
-    end
-    
-    % Calc GMSST:
-    CIN.GMSST = ZvP.Tp(1,:)';
-    
-    % Calc TPI:
-    CIN.TPIraw = CIN.TPIr2-(CIN.TPIr1+CIN.TPIr3)/2;
-    [b,a] = cheby1(6,10,2/13/12);
-    CIN.TPI = filter(b,a,CIN.TPIraw);
-    % Shift time (not sure why I have to do this???):
-    CIN.TPI(1:(end-13*12)) = CIN.TPI(13*12:end-1);
-    CIN.TPI((end-13*12+1):end) = 0;
-    
-% $$$     % Calculate quantities for Time Of Emergence:
-% $$$     if (PI_or_his)
-% $$$     PIstd.stdZvP.Tp = std(ZvP.Tp,[],2);
-% $$$     PIstd.stdTvP.Tp = std(TvP.Tp,[],2);
-% $$$     PIstd.stdYvP.Tp = std(YvP.Tp,[],2);
-% $$$     PIstd.stdOHC = std(OHC,[],1);
-% $$$     save('PIstd.mat','PIstd');
-% $$$     else
-% $$$         load('PIstd.mat');
-% $$$     end
-
-% $$$     %%%% Plot total heat content and fits time series:
-% $$$     figure;
-% $$$     set(gcf,'Position',[1 41 2560 1327.3]);
-% $$$     subplot(5,1,1);
-% $$$     plot(time,filter_field(CIN.N34,5,'-t'));
-% $$$     hold on;
-% $$$     plot(time,CIN.GMSST*10,'-r');
-% $$$     legend('Nino 3.4','Global Mean SST Anomalies * 10');
-% $$$     xlabel('Year');
-% $$$     ylabel('SST ($^\circ$C)');
-% $$$     xlim([yr1 yr1+nyrs]);
-% $$$ 
-% $$$     subplot(5,1,2);
-% $$$     plot(time,OHC,'-k');
-% $$$     hold on;
-% $$$     plot(time,OHCfull,'-b');
-% $$$     plot(time,OHC_cub,'-r');
-% $$$     legend('OHC dedrifted','OHC deseasoned','OHC cubic fix');
-% $$$     xlabel('Year');
-% $$$     ylabel('Ocean Heat Content (J)');
-% $$$     xlim([yr1 yr1+nyrs]);
-% $$$ 
-% $$$     subplot(5,1,3);
-% $$$     plot(time,OHC,'-k');
-% $$$     hold on;
-% $$$     plot(time,TvP.Hp(end,:),'--g');
-% $$$     plot(time,ZvP.Hp(end,:),'--c');
-% $$$     plot(time,YvP.Hp(end,:),'--y');
-% $$$     legend('OHC dedrifted',...
-% $$$            'OHC from cumsum(TvP.Tp)','OHC from cumsum(ZvP.Tp)','OHC from cumsum(YvP.Tp)');
-% $$$     xlabel('Year');
-% $$$     ylabel('Ocean Heat Content (J)');
-% $$$     xlim([yr1 yr1+nyrs]);
-% $$$ 
-% $$$     subplot(5,1,4);
-% $$$     plot(time,CIN.AMOCfull,'-k');
-% $$$     hold on;
-% $$$     plot(time,filter_field(CIN.AMOCfull,5*12+1,'-t'),'-k','linewidth',2);
-% $$$     xlabel('Year');
-% $$$     ylabel('AMOC at $26^\circ$N (Sv)');
-% $$$     xlim([yr1 yr1+nyrs]);
-% $$$ 
-% $$$     subplot(5,1,5);
-% $$$     plot(time,CIN.WPOW,'-k');
-% $$$     hold on;
-% $$$     plot(time,filter_field(CIN.WPOW,5*12+1,'-t'),'-k','linewidth',2);
-% $$$     xlabel('Year');
-% $$$     ylabel('Total Wind Power (W)');
-% $$$     xlim([yr1 yr1+nyrs]);
-    
-% $$$     %%% Time of emergence/historical OHC:
-% $$$     
-% $$$     figure;
-% $$$     plot(time,OHC,'-k');
-% $$$     hold on;
-% $$$ % $$$     plot([1850 2020],[1 1]*2*PIstd.stdOHC,'--k');
-% $$$ % $$$     plot([1850 2020],[1 1]*-2*PIstd.stdOHC,'--k');
-% $$$     plot([50 600],[1 1]*2*PIstd.stdOHC,'--k');
-% $$$     plot([50 600],[1 1]*-2*PIstd.stdOHC,'--k');
-% $$$     xlabel('Year');
-% $$$     ylabel('OHC (J)');
-% $$$ 
-% $$$     figure;
-% $$$     plot(PIstd.stdZvP.Tp*2,P,'-k');
-% $$$     hold on;
-% $$$     plot(PIstd.stdTvP.Tp*2,P,'-r');
-% $$$     plot(PIstd.stdYvP.Tp*2,P,'-b');
-% $$$     xlabel('2$\sigma$ variability amplitude ($^\circ$C)');
-% $$$     ylabel('Percentile');
-% $$$     legend('$\Theta(p_z)$','$\Theta(p_\Theta)$',['$\Theta(p_\' ...
-% $$$                         'phi)$']);
-% $$$     
-% $$$     % Example time series:
-% $$$     pii = 20;
-% $$$     [tmp piii] = min(abs(P-pii));
-% $$$     figure;
-% $$$     plot(time,ZvP.Tp(piii,:),'-k','linewidth',2);
-% $$$     hold on;
-% $$$     plot(time,TvP.Tp(piii,:),'-r','linewidth',2);
-% $$$ % $$$     plot(time,YvP.Tp(piii,:),'-b','linewidth',2);
-% $$$     plot([time(1) time(end)],[1 1]*2*PIstd.stdZvP.Tp(piii),'--k');
-% $$$     plot([time(1) time(end)],[1 1]*-2*PIstd.stdZvP.Tp(piii),'--k');
-% $$$     plot([time(1) time(end)],[1 1]*2*PIstd.stdTvP.Tp(piii),'--r');
-% $$$     plot([time(1) time(end)],[1 1]*-2*PIstd.stdTvP.Tp(piii),'--r');
-% $$$ % $$$     plot([time(1) time(end)],[1 1]*2*PIstd.stdYvP.Tp(piii),'--b');
-% $$$ % $$$     plot([time(1) time(end)],[1 1]*-2*PIstd.stdYvP.Tp(piii),'--b');
-
-    % Choose whether to remap to T for y-axis:
-    remap_to_T = 0;
-    if (remap_to_T)
-        
-        Z_YvPar = ZvP.Tp_mean;
-        zlim = [-2 34];
-        zlab = 'Horizontally-averaged Temperature ($^\circ$C)';
-
-        T_YvPar = TvP.Tp_mean;
-        tlim = [-2 34];
-        tlab = 'Percentile-averaged Temperature ($^\circ$C)';
-    
-        y_YvPar = YvP.Tp_mean;
-        yylim = [-80 80];
-        ylab = 'Vertical/zonal-averaged Temperature ($^\circ$C)';
-    else
-        Z_YvPar = P;
-        zlim = [0 100];
-        zlab = 'Depth Percentile $p_z$';
-
-        T_YvPar = P;
-        tlim = zlim;
-        tlab = 'Temperature Percentile $p_\Theta$';
-        
-        y_YvPar = P;
-        yylim = zlim;
-        ylab = 'Latitude Percentile $p_\phi$';
-    end        
-    
-    %%%%% Plot mean, climatology, std and trends:
-    figure;
-    set(gcf,'Position',[1 41 2560 1330]);
-
-    subplot(3,4,1);
-    plot(ZvP.Tp_mean,P,'linewidth',2);
-    xlabel('Temperature ($^\circ$C)');
-    xlim([-2 34]);
-    ylabel('Depth Percentile');
-    ylim([0 100]);
-    title('ACCESS-CM2 PI-control mean $\Theta(z)$');
-    set(gca,'ydir','reverse')
-
-    subplot(3,4,2);
-    [X,Y] = ndgrid(1:12,Z_YvPar);
-    contourf(X,Y,ZvP.Tp_clim',[-10 -0.2:0.002:0.2 10],'linestyle','none');
-    xlabel('Month');
     ylabel(zlab);
-    ylim(zlim);
-    title('ACCESS-CM2 PI-control $\Theta(p_z)$ seasonal cycle');
-    caxis([-0.2 0.2]);
-    colorbar;
-    if (~remap_to_T);set(gca,'ydir','reverse');end;
+    cb = colorbar;
+    ylabel(cb,'$^\circ$C');
+    set(gca,'ydir','reverse');
+    title(names{vi});
+end
+colormap(redblue);
 
-    subplot(3,4,3);
-    plot(std(ZvP.Tp_clim,[],2),Z_YvPar,'linewidth',2);
-    hold on;
-    plot(std(ZvP.Tp,[],2),Z_YvPar,'-r','linewidth',2);
-    xlabel('std(Temperature) ($^\circ$C)');
-    legend('Seasonal Climatology','Anomalies');
-    ylabel(zlab);
-    ylim(zlim);
-    xlim([0 0.3]);
-    title('ACCESS-CM2 PI-control variability $\Theta(p_z)$');
-    if (~remap_to_T);set(gca,'ydir','reverse');end;
+% Temperature Percentile:
+Tcxs = [-0.2 0.01 0.2];
+tlim = [0 10];tlim = [95 100];
+Tcxs = [-0.05 0.001 0.05];
+tlim = [0 100];
+Tlab = '$\Theta(p_\Theta)$';
+tlab = 'Temperature Percentile $p_\Theta$';
 
-    subplot(3,4,4);
-    plot(ZvP.Tp_cubtr(2,:)',P,'linewidth',2);
-    xlabel('Temperature trend ($^\circ$C/year)');
-    ylabel('Depth Percentile');
-    ylim(zlim);
-    xlim([-1.5e-3 1.5e-3]);
-    title('ACCESS-CM2 PI-control linear trend $\Theta(p_z)$');
-    if (~remap_to_T);set(gca,'ydir','reverse');end;
+figure;
+set(gcf,'Position',[1          36        1920         970]);
+set(gcf,'defaulttextfontsize',15);
+set(gcf,'defaultaxesfontsize',15);
 
-    subplot(3,4,5);
-    plot(TvP.Tp_mean,P,'linewidth',2);
-    xlabel('Temperature ($^\circ$C)');
-    xlim([-2 34]);
-    ylim([0 100]);
-    ylabel('Temperature Percentile');
-    title('ACCESS-CM2 PI-control mean $\Theta(p)$');
-    set(gca,'ydir','reverse')
+[X,Y] = ndgrid(1:12,P);
+subplot(3,2,1);
+contourf(X,Y,TvP.Tp_clim',[-1e50 Tcxs(1):Tcxs(2):Tcxs(3) 1e50],'linestyle','none');
+caxis([Tcxs(1) Tcxs(3)]);
+ylim(tlim);
+ylabel(tlab);
+set(gca,'ydir','reverse');
+set(gca,'xticklabel',[]);
+title(['Seasonal ' Tlab ' Anomalies']);
+cb = colorbar;
+ylabel(cb,'$^\circ$C');
 
-    subplot(3,4,6);
-    [X,Y] = ndgrid(1:12,T_YvPar);
-    contourf(X,Y,TvP.Tp_clim',[-10 -0.2:0.002:0.2 10],'linestyle','none');
-    xlabel('Month');
-    ylabel(tlab);
-    title('ACCESS-CM2 PI-control $\Theta(p_\Theta)$ seasonal cycle');
-    colorbar;
-    colormap(redblue);
-    caxis([-0.2 0.2]);
+for vi = 1:length(bvars)
+    [X,Y] = ndgrid(1:12,Pe);
+    eval(['var = TvP.' bvars{vi} '_clim;']);
+    subplot(3,2,1+vi);
+    contourf(avg(X,2),avg(Y,2),var',[-1e50 Tcxs(1):Tcxs(2):Tcxs(3) 1e50],'linestyle','none');
+    caxis([Tcxs(1) Tcxs(3)]);
     ylim(tlim);
-    if (~remap_to_T);set(gca,'ydir','reverse');end;
+    if (vi<4)
+        set(gca,'xticklabel',[]);
+    else
+        xlabel('Month');
+    end
+    ylabel(tlab);
+    cb = colorbar;
+    ylabel(cb,'$^\circ$C');
+    set(gca,'ydir','reverse');
+    title(names{vi});
+end
+colormap(redblue);
 
-    subplot(3,4,7);
-    plot(std(TvP.Tp_clim,[],2),T_YvPar,'linewidth',2);
-    hold on;
-    plot(std(TvP.Tp,[],2),T_YvPar,'-r','linewidth',2);
-    xlabel('std(Temperature) ($^\circ$C)');
-    legend('Seasonal Climatology','Anomalies');
+% Latitude percentile:
+Ycxs = [-0.1 0.005 0.1];Ylab = '$\Theta(p_\phi)$';
+yylim = [0 100];
+ylab = 'Latitude Percentile $p_\phi$';
+
+figure;
+set(gcf,'Position',[1          36        1920         970]);
+set(gcf,'defaulttextfontsize',15);
+set(gcf,'defaultaxesfontsize',15);
+
+[X,Y] = ndgrid(1:12,P);
+subplot(3,2,1);
+contourf(X,Y,YvP.Tp_clim',[-1e50 Ycxs(1):Ycxs(2):Ycxs(3) 1e50],'linestyle','none');
+caxis([Ycxs(1) Ycxs(3)]);
+ylim(yylim);
+ylabel(ylab);
+set(gca,'xticklabel',[]);
+title(['Seasonal ' Ylab ' Anomalies']);
+cb = colorbar;
+ylabel(cb,'$^\circ$C');
+
+for vi = 1:length(bvars)
+    [X,Y] = ndgrid(1:12,Pe);
+    eval(['var = YvP.' bvars{vi} '_clim;']);
+    subplot(3,2,1+vi);
+    contourf(avg(X,2),avg(Y,2),var',[-1e50 Ycxs(1):Ycxs(2):Ycxs(3) 1e50],'linestyle','none');
+    caxis([Ycxs(1) Ycxs(3)]);
     ylim(yylim);
-    xlim([0 0.3]);
+    if (vi<4)
+        set(gca,'xticklabel',[]);
+    else
+        xlabel('Month');
+    end
     ylabel(ylab);
-    title('ACCESS-CM2 PI-control variability $\Theta(p_\Theta)$');
-    if (~remap_to_T);set(gca,'ydir','reverse');end;
-% $$$     set(gca,'Position',[0.1300    0.5838    0.2504    0.3412]);
+    cb = colorbar;
+    ylabel(cb,'$^\circ$C');
+    title(names{vi});
+end
+colormap(redblue);
 
-    subplot(3,4,8);
-    plot(TvP.Tp_cubtr(2,:)',T_YvPar,'linewidth',2);
-    xlabel('Temperature trend ($^\circ$C/year)');
-    xlim([-1.5e-3 1.5e-3]);
-    ylim(yylim);
-    ylabel(ylab);
-    title('ACCESS-CM2 PI-control linear trend $\Theta(p_\Theta)$');
-    if (~remap_to_T);set(gca,'ydir','reverse');end;
-
-    subplot(3,4,9);
-    plot(YvP.Tp_mean,P,'linewidth',2);
-    xlabel('Temperature ($^\circ$C)');
-    xlim([-1 6.5]);
-    ylim([0 100]);
-    ylabel('Latitude Percentile');
-    title('ACCESS-CM2 PI-control mean $\phi(p)$');
-
-    subplot(3,4,10);
-    [X,Y] = ndgrid(1:12,y_YvPar);
-    contourf(X,Y,YvP.Tp_clim',[-10 -0.2:0.002:0.2 10],'linestyle','none');
-    xlabel('Month');
-    ylabel(ylab);
-    title('ACCESS-CM2 PI-control $\Theta(p_\phi)$ seasonal cycle');
-    colorbar;
-    colormap(redblue);
-    caxis([-0.2 0.2]);
-    ylim(yylim);
-
-    subplot(3,4,11);
-    plot(std(YvP.Tp_clim,[],2),y_YvPar,'linewidth',2);
-    hold on;
-    plot(std(YvP.Tp,[],2),y_YvPar,'-r','linewidth',2);
-    xlabel('std(Temperature) ($^\circ$C)');
-    legend('Seasonal Climatology','Anomalies');
-    ylim(yylim);
-    xlim([0 0.3]);
-    ylabel(ylab);
-    title('ACCESS-CM2 PI-control variability $\Theta(p_\phi)$');
-% $$$     set(gca,'Position',[0.1300    0.5838    0.2504    0.3412]);
-
-    subplot(3,4,12);
-    plot(YvP.Tp_cubtr(2,:)',y_YvPar,'linewidth',2);
-    xlabel('Temperature trend ($^\circ$C/year)');
-    xlim([-1.5e-3 1.5e-3]);
-    ylim(yylim);
-    ylabel(ylab);
-    title('ACCESS-CM2 PI-control linear trend $\Theta(p_\phi)$');
 % $$$ 
 % $$$ 
 % $$$     %%% Straight comparison of amplitude of anomalies:
@@ -875,7 +631,7 @@ OHC = squeeze(Zv.H_c(end,:))';
         ylim(ax2,yylim);
     end
 
-    %%%%%% Plot all anomalies time series:
+    %%%%%% Plot budget terms:
     xlims = [yr1 yr1+nyrs];
 
     % ENSO Focus settings:
@@ -891,28 +647,51 @@ OHC = squeeze(Zv.H_c(end,:))';
     [tmp t2] = min(abs(time-xlims(2)));
     
     bvars = {'TENp','ADVp','FORp','RMIXp','VMIXp'};
+    names = {'Tendency','Advection','Forcing','Redi Mixing','Vertical ' ...
+                        'Mixing'};
 
-    for ti =1:length(typs)
-        figure;
-        set(gcf,'Position',[1 41 2560 1330]);
-        set(gcf,'defaulttextfontsize',15);
-        set(gcf,'defaultaxesfontsize',15);
-        [X,Y] = ndgrid(time(t1:t2),Z_YvPar);
+    figure;
+    set(gcf,'Position',[1 41 2560 1330]);
+    set(gcf,'defaulttextfontsize',15);
+    set(gcf,'defaultaxesfontsize',15);
 
-        subplot(3,2,1);
-        contourf(X,Y,ZvPar(:,t1:t2)',[-1e50 Zcxs(1):Zcxs(2):Zcxs(3) 1e50],'linestyle','none');
+    [X,Y] = ndgrid(time(t1:t2),P);
+    subplot(3,2,1);
+    contourf(X,Y,ZvPar(:,t1:t2)',[-1e50 Zcxs(1):Zcxs(2):Zcxs(3) 1e50],'linestyle','none');
+    caxis([Zcxs(1) Zcxs(3)]);
+    ylim(zlim);
+    xlim(xlims);
+    set(gca,'xticklabel',[]);
+    ylabel(zlab);
+    text(xlims(1)+(xlims(2)-xlims(1))*0.01,0.93*zlim(2),['ACCESS-CM2 PI-control ' Zlab ' anomalies'],'Backgroundcolor','w');
+    set(gca,'ydir','reverse');
+        
+    for vi = 1:length(bvars)
+        [X,Y] = ndgrid(time(t1:t2),Pe);
+        eval(['var = ZvP.' bvars{vi} ';']);
+        subplot(3,2,1+vi);
+        contourf(avg(X,2),avg(Y,2),var(:,t1:t2)',[-1e50 Zcxs(1):Zcxs(2):Zcxs(3) 1e50],'linestyle','none');
         caxis([Zcxs(1) Zcxs(3)]);
         ylim(zlim);
         xlim(xlims);
-        set(gca,'xticklabel',[]);
+        if (vi<4)
+            set(gca,'xticklabel',[]);
+        else
+            xlabel('Year');
+        end
         ylabel(zlab);
-        text(xlims(1)+(xlims(2)-xlims(1))*0.01,0.93*zlim(2),['ACCESS-CM2 PI-control ' Zlab ' anomalies'],'Backgroundcolor','w');
+        text(xlims(1)+(xlims(2)-xlims(1))*0.01,0.93*zlim(2),names{vi},'Backgroundcolor','w');
         set(gca,'ydir','reverse');
-        
-        for vi = 1:length(bvars)
-    
-    [X,Y] = ndgrid(time(t1:t2),T_YvPar);
-    subplot(3,1,2);
+    end
+    colormap(redblue);
+
+    figure;
+    set(gcf,'Position',[1 41 2560 1330]);
+    set(gcf,'defaulttextfontsize',15);
+    set(gcf,'defaultaxesfontsize',15);
+
+    [X,Y] = ndgrid(time(t1:t2),P);
+    subplot(3,2,1);
     contourf(X,Y,TvPar(:,t1:t2)',[-1e50 Tcxs(1):Tcxs(2):Tcxs(3) 1e50],'linestyle','none');
     caxis([Tcxs(1) Tcxs(3)]);
     ylim(tlim);
@@ -924,33 +703,33 @@ OHC = squeeze(Zv.H_c(end,:))';
     cb = colorbar;
     ylabel(cb,'Temperature Anomalies ($^\circ$C)','Interpreter','latex');
     text(xlims(1)+(xlims(2)-xlims(1))*0.01,0.73*tlim(2),['ACCESS-CM2 PI-control ' Tlab ' anomalies'],'Backgroundcolor','w');
-    set(gca,'Position',[0.13 0.37 0.75 0.29]);
-    if (~remap_to_T)
-        set(gca,'ydir','reverse');
-        ax1=gca;
-        ax1_pos = ax1.Position; % position of first axes
-        ax1_pos(1) = ax1_pos(1)*0.7;
-        ax1_pos(3) = 0.00001;
-        ax2 = axes('Position',ax1_pos,...
-                   'Color','none');
-        set(ax2,'FontSize',15);
-% $$$         Zticks = [30 18 12:-2:-2];
-        Zticks = [30 15 10:-2:0];
-% $$$         Zticks = [30 22 18 16:-2:8];
-% $$$         Zticks = [2:-0.25:-0.5 -2];
-        Pticks = zeros(size(Zticks));
-        for ii=1:length(Zticks)
-            Pticks(ii) = interp1(TvP.Tp_mean,P,Zticks(ii),'linear');
+    set(gca,'ydir','reverse');
+        
+    for vi = 1:length(bvars)
+        [X,Y] = ndgrid(time(t1:t2),Pe);
+        eval(['var = TvP.' bvars{vi} ';']);
+        subplot(3,2,1+vi);
+        contourf(avg(X,2),avg(Y,2),var(:,t1:t2)',[-1e50 Tcxs(1):Tcxs(2):Tcxs(3) 1e50],'linestyle','none');
+        caxis([Tcxs(1) Tcxs(3)]);
+        ylim(tlim);
+        xlim(xlims);
+        if (vi<4)
+            set(gca,'xticklabel',[]);
+        else
+            xlabel('Year');
         end
-        set(ax2,'ytick',Pticks);
-        set(ax2,'yticklabel',Zticks);
-        ylabel(ax2,'Temperature ($^\circ$C)');
-        ylim(ax2,zlim);
-        set(ax2,'ydir','reverse');
+        ylabel(tlab);
+        text(xlims(1)+(xlims(2)-xlims(1))*0.01,0.93*zlim(2),names{vi},'Backgroundcolor','w');
+        set(gca,'ydir','reverse');
     end
+    colormap(redblue);
 
-    [X,Y] = ndgrid(time(t1:t2),y_YvPar);
-    subplot(3,1,3);
+    figure;
+    set(gcf,'Position',[1 41 2560 1330]);
+    set(gcf,'defaulttextfontsize',15);
+    set(gcf,'defaultaxesfontsize',15);
+    [X,Y] = ndgrid(time(t1:t2),P);
+    subplot(3,2,1);
     contourf(X,Y,yvar(:,t1:t2)',[-1e50 ycxs(1):ycxs(2):ycxs(3) 1e50],'linestyle','none');
     caxis([ycxs(1) ycxs(3)]);
     ylim(yylim);
@@ -960,26 +739,24 @@ OHC = squeeze(Zv.H_c(end,:))';
 % $$$     cb = colorbar;
 % $$$     ylabel(cb,'Temperature Anomalies ($^\circ$C)','Interpreter','latex');
     text(xlims(1)+(xlims(2)-xlims(1))*0.01,83,['ACCESS-CM2 PI-control ' Ylab ' anomalies'],'Backgroundcolor','w');
-    set(gca,'Position',[0.13 0.05 0.75 0.29]);
-    if (~remap_to_T)
-        ax1=gca;
-        ax1_pos = ax1.Position; % position of first axes
-        ax1_pos(1) = ax1_pos(1)*0.7;
-        ax1_pos(3) = 0.00001;
-        ax2 = axes('Position',ax1_pos,...
-                   'Color','none');
-        set(ax2,'FontSize',15);
-        Zticks = [-75:15:60];
-        Pticks = zeros(size(Zticks));
-        for ii=1:length(Zticks)
-            Pticks(ii) = interp1(yofP_mean,P,Zticks(ii),'linear');
+    for vi = 1:length(bvars)
+        [X,Y] = ndgrid(time(t1:t2),Pe);
+        eval(['var = YvP.' bvars{vi} ';']);
+        subplot(3,2,1+vi);
+        contourf(avg(X,2),avg(Y,2),var(:,t1:t2)',[-1e50 ycxs(1):ycxs(2):ycxs(3) 1e50],'linestyle','none');
+        caxis([ycxs(1) ycxs(3)]);
+        ylim(yylim);
+        xlim(xlims);
+        if (vi<4)
+            set(gca,'xticklabel',[]);
+        else
+            xlabel('Year');
         end
-        Pticks(1) = 0;
-        set(ax2,'ytick',Pticks);
-        set(ax2,'yticklabel',Zticks);
-        ylabel(ax2,'Latitude ($^\circ$N)');
-        ylim(ax2,yylim);
+        ylabel(ylab);
+        text(xlims(1)+(xlims(2)-xlims(1))*0.01,0.93*zlim(2),names{vi},'Backgroundcolor','w');
+        set(gca,'ydir','reverse');
     end
+    colormap(redblue);
 
 
 % $$$ 
