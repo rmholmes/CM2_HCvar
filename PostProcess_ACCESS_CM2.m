@@ -69,6 +69,17 @@ end
 
 OHC = squeeze(Zv.H_c(end,:))';
 
+% $$$ % Time-integrate budget terms (prior to remapping to P):
+% $$$ bvars = {'TEN_c','ADV_c','FOR_c','RMIX_c','VMIX_c'};
+% $$$ for ti =1:length(typs)
+% $$$     for vi=1:length(bvars)
+% $$$         eval([typs{ti} 'v.' bvars{vi} ' = cumsum(' typs{ti} ...
+% $$$               'v.' bvars{vi} '.*repmat(DT_A'',[length(' typs{ti} ...
+% $$$               'v.' bvars{vi} '(:,1)) 1]),2);']);
+% $$$     end
+% $$$ end    
+
+
 % $$$ %%% New approach: Interpolate HC
 % $$$     % Interpolate only high-resolution grids for smoothness:
 % $$$     zfac = 1;

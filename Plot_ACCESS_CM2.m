@@ -1,7 +1,7 @@
 %%%% Plotting scripts for HC variability project
 
 %%% Percentile converter:
-Ps = [10 50 95];
+Ps = [5 10 50 95];
 for pi=1:length(Ps)
     [tmp pii] = min(abs(P-Ps(pi)));
     sprintf(['Percentile %3.1f is %5.1fm, %3.1fC, %3.1f degrees ' ...
@@ -94,6 +94,10 @@ plot([time(1) time(end)],[1 1]*2*PIstd.stdZvP.Tp(piii),'--k');
 plot([time(1) time(end)],[1 1]*-2*PIstd.stdZvP.Tp(piii),'--k');
 plot([time(1) time(end)],[1 1]*2*PIstd.stdTvP.Tp(piii),'--r');
 plot([time(1) time(end)],[1 1]*-2*PIstd.stdTvP.Tp(piii),'--r');
+    
+%%%%% Plot mean, climatology, std and trends:
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 % Choose whether to remap to T for y-axis:
 remap_to_T = 0;
@@ -123,9 +127,6 @@ else
     yylim = zlim;
     ylab = 'Latitude Percentile $p_\phi$';
 end        
-    
-%%%%% Plot mean, climatology, std and trends:
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 figure;
 set(gcf,'Position',[1 41 2560 1330]);
@@ -386,407 +387,486 @@ for vi = 1:length(bvars)
 end
 colormap(redblue);
 
+%%% Straight comparison of amplitude of anomalies:
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+figure;
+set(gcf,'Position',[1 41 2560 1330]);
+subplot(1,2,1);
+plot(std(ZvP.Tp,[],2),P,'-k','linewidth',2);
+hold on;
+plot(std(TvP.Tp,[],2),P,'-r','linewidth',2);
+plot(std(YvP.Tp,[],2),P,'-b','linewidth',2);
+xlabel('Standard Deviation of $\Theta$ ($^\circ$C)');
+legend('$\Theta(p_z)$','$\Theta(p_\Theta)$','$\Theta(p_\phi)$');
+ylabel('Percentile');
+ylim([0 100]);
+xlim([0 0.3]);
+title('ACCESS-CM2 PI-control variability');
+set(gca,'ydir','reverse');
+
+% Averages:
+text(0.1,30,['$\Theta(p_z)$ average = ' sprintf('%3.4f',mean(std(ZvP.Tp,[],2))) '$^\circ$C'],'color','k');
+text(0.1,35,['$\Theta(p_\Theta)$ average = ' sprintf('%3.4f',mean(std(TvP.Tp,[],2))) '$^\circ$C'],'color','r');
+text(0.1,40,['$\Theta(p_\phi)$ average = ' sprintf('%3.4f',mean(std(YvP.Tp,[],2))) '$^\circ$C'],'color','b');
+
+ax1=gca;
+ax1_pos = ax1.Position; % position of first axes
+ax1_pos(1) = ax1_pos(1)*0.8;
+ax1_pos(3) = 0.00001;
+ax2 = axes('Position',ax1_pos,...
+           'Color','none');
+set(ax2,'FontSize',15);
+Zticks = [30 18 12:-2:-2];
+Pticks = zeros(size(Zticks));
+for ii=1:length(Zticks)
+    Pticks(ii) = interp1(TvP.Tp_mean,P,Zticks(ii),'linear');
+end
+set(ax2,'ytick',Pticks);
+set(ax2,'yticklabel',Zticks);
+ylabel(ax2,'Temperature ($^\circ$C)');
+ylim(ax2,zlim);
+set(ax2,'ydir','reverse');
+ax1=gca;
+ax1_pos = ax1.Position; % position of first axes
+ax1_pos(1) = ax1_pos(1)*0.6;
+ax1_pos(3) = 0.00001;
+ax2 = axes('Position',ax1_pos,...
+           'Color','r');
+set(ax2,'color','r');
+set(ax2,'FontSize',15);
+Zticks = [0:500:4000 5000];
+Pticks = zeros(size(Zticks));
+for ii=1:length(Zticks)
+    Pticks(ii) = interp1(zofP_mean,P,-Zticks(ii),'linear');
+end
+Pticks(1) = 0;
+set(ax2,'ytick',Pticks);
+set(ax2,'yticklabel',Zticks);
+ylabel(ax2,'Depth (m)');
+ylim(ax2,zlim);
+set(ax2,'ydir','reverse');
+ax1=gca;
+ax1_pos = ax1.Position; % position of first axes
+ax1_pos(1) = ax1_pos(1)*0.4;
+ax1_pos(3) = 0.00001;
+ax2 = axes('Position',ax1_pos,...
+           'Color','r');
+set(ax2,'color','r');
+set(ax2,'FontSize',15);
+Zticks = [-75:15:75];
+Pticks = zeros(size(Zticks));
+for ii=1:length(Zticks)
+    Pticks(ii) = interp1(yofP_mean,P,Zticks(ii),'linear');
+end
+Pticks(1) = 0;
+set(ax2,'ytick',Pticks);
+set(ax2,'yticklabel',Zticks);
+ylabel(ax2,'Latitude ($^\circ$N)');
+ylim(ax2,zlim);
+set(gca,'ydir','reverse');
+
+
+subplot(1,2,2);
+plot(std(ZvP.Hp,[],2),P,'-k','linewidth',2);
+hold on;
+plot(std(TvP.Hp,[],2),P,'-r','linewidth',2);
+plot(std(YvP.Hp,[],2),P,'-b','linewidth',2);
+xlabel('Standard Deviation of heat content (J)');
+legend('$H(p_z)$','$H(p_\Theta)$','$H(p_\phi)$');
+ylabel('Percentile');
+ylim([0 100]);
+title('ACCESS-CM2 PI-control variability');
+set(gca,'ydir','reverse');
+
+%%%%%% Plot all anomalies P-t:  %%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Choose whether to plot T or H:
+% $$$ plot_H = 0;
+% $$$ if (plot_H)
+% $$$     ZvPar = ZvP.Hp;
+% $$$     Zcxs = [-0.5e23 1e21 0.5e23];
+% $$$     Zlab = '$H(p_z)$';
 % $$$ 
-% $$$ 
-% $$$     %%% Straight comparison of amplitude of anomalies:
-% $$$     figure;
-% $$$     set(gcf,'Position',[1 41 2560 1330]);
-% $$$     subplot(1,2,1);
-% $$$     plot(std(ZvP.Tp,[],2),P,'-k','linewidth',2);
-% $$$     hold on;
-% $$$     plot(std(TvP.Tp,[],2),P,'-r','linewidth',2);
-% $$$     plot(std(YvP.Tp,[],2),P,'-b','linewidth',2);
-% $$$     xlabel('Standard Deviation of $\Theta$ ($^\circ$C)');
-% $$$     legend('$\Theta(p_z)$','$\Theta(p_\Theta)$','$\Theta(p_\phi)$');
-% $$$     ylabel('Percentile');
-% $$$     ylim([0 100]);
-% $$$     xlim([0 0.3]);
-% $$$     title('ACCESS-CM2 PI-control variability');
-% $$$     set(gca,'ydir','reverse');
+% $$$     TvPar = TvP.Hp;
+% $$$     Tcxs = [-0.5e23 1e21 0.5e23];
+% $$$     Tlab = '$H(p_\Theta)$';
 % $$$     
-% $$$     % Averages:
-% $$$     text(0.1,30,['$\Theta(p_z)$ average = ' sprintf('%3.4f',mean(std(ZvP.Tp,[],2))) '$^\circ$C'],'color','k');
-% $$$     text(0.1,35,['$\Theta(p_\Theta)$ average = ' sprintf('%3.4f',mean(std(TvP.Tp,[],2))) '$^\circ$C'],'color','r');
-% $$$     text(0.1,40,['$\Theta(p_\phi)$ average = ' sprintf('%3.4f',mean(std(YvP.Tp,[],2))) '$^\circ$C'],'color','b');
-% $$$ 
-% $$$     ax1=gca;
-% $$$     ax1_pos = ax1.Position; % position of first axes
-% $$$     ax1_pos(1) = ax1_pos(1)*0.8;
-% $$$     ax1_pos(3) = 0.00001;
-% $$$     ax2 = axes('Position',ax1_pos,...
-% $$$                'Color','none');
-% $$$     set(ax2,'FontSize',15);
-% $$$     Zticks = [30 18 12:-2:-2];
-% $$$     Pticks = zeros(size(Zticks));
-% $$$     for ii=1:length(Zticks)
-% $$$         Pticks(ii) = interp1(TvP.Tp_mean,P,Zticks(ii),'linear');
-% $$$     end
-% $$$     set(ax2,'ytick',Pticks);
-% $$$     set(ax2,'yticklabel',Zticks);
-% $$$     ylabel(ax2,'Temperature ($^\circ$C)');
-% $$$     ylim(ax2,zlim);
-% $$$     set(ax2,'ydir','reverse');
-% $$$     ax1=gca;
-% $$$     ax1_pos = ax1.Position; % position of first axes
-% $$$     ax1_pos(1) = ax1_pos(1)*0.6;
-% $$$     ax1_pos(3) = 0.00001;
-% $$$     ax2 = axes('Position',ax1_pos,...
-% $$$                    'Color','r');
-% $$$     set(ax2,'color','r');
-% $$$     set(ax2,'FontSize',15);
-% $$$     Zticks = [0:500:4000 5000];
-% $$$     Pticks = zeros(size(Zticks));
-% $$$     for ii=1:length(Zticks)
-% $$$         Pticks(ii) = interp1(zofP_mean,P,-Zticks(ii),'linear');
-% $$$     end
-% $$$     Pticks(1) = 0;
-% $$$     set(ax2,'ytick',Pticks);
-% $$$     set(ax2,'yticklabel',Zticks);
-% $$$     ylabel(ax2,'Depth (m)');
-% $$$     ylim(ax2,zlim);
-% $$$     set(ax2,'ydir','reverse');
-% $$$     ax1=gca;
-% $$$     ax1_pos = ax1.Position; % position of first axes
-% $$$     ax1_pos(1) = ax1_pos(1)*0.4;
-% $$$     ax1_pos(3) = 0.00001;
-% $$$     ax2 = axes('Position',ax1_pos,...
-% $$$                    'Color','r');
-% $$$     set(ax2,'color','r');
-% $$$     set(ax2,'FontSize',15);
-% $$$     Zticks = [-75:15:75];
-% $$$     Pticks = zeros(size(Zticks));
-% $$$     for ii=1:length(Zticks)
-% $$$         Pticks(ii) = interp1(yofP_mean,P,Zticks(ii),'linear');
-% $$$     end
-% $$$     Pticks(1) = 0;
-% $$$     set(ax2,'ytick',Pticks);
-% $$$     set(ax2,'yticklabel',Zticks);
-% $$$     ylabel(ax2,'Latitude ($^\circ$N)');
-% $$$     ylim(ax2,zlim);
-% $$$     set(gca,'ydir','reverse');
-% $$$     
-% $$$ 
-% $$$     subplot(1,2,2);
-% $$$     plot(std(ZvP.Hp,[],2),P,'-k','linewidth',2);
-% $$$     hold on;
-% $$$     plot(std(TvP.Hp,[],2),P,'-r','linewidth',2);
-% $$$     plot(std(YvP.Hp,[],2),P,'-b','linewidth',2);
-% $$$     xlabel('Standard Deviation of heat content (J)');
-% $$$     legend('$H(p_z)$','$H(p_\Theta)$','$H(p_\phi)$');
-% $$$     ylabel('Percentile');
-% $$$     ylim([0 100]);
-% $$$     title('ACCESS-CM2 PI-control variability');
-% $$$     set(gca,'ydir','reverse');
-        
-    % Choose whether to plot T or H:
-    plot_H = 0;
-    if (plot_H)
-        ZvPar = ZvP.Hp;
-        Zcxs = [-0.5e23 1e21 0.5e23];
-        Zlab = '$H(p_z)$';
+% $$$     yvar = YvP.Hp;
+% $$$     ycxs = [-0.5e23 1e21 0.5e23];
+% $$$     Ylab = '$H(p_\phi)$';
+% $$$ else
+ZvPar = ZvP.Tp;
+Zcxs = [-0.2 0.02 0.2];
+Zlab = '$\Theta(p_z)$';
+TvPar = TvP.Tp;
+Tcxs = Zcxs;
+Tlab = '$\Theta(p_\Theta)$';
+yvar = YvP.Tp;
+ycxs = Zcxs;%[-0.1 0.01 0.1];
+Ylab = '$\Theta(p_\phi)$';
 
-        TvPar = TvP.Hp;
-        Tcxs = [-0.5e23 1e21 0.5e23];
-        Tlab = '$H(p_\Theta)$';
-    
-        yvar = YvP.Hp;
-        ycxs = [-0.5e23 1e21 0.5e23];
-        Ylab = '$H(p_\phi)$';
-    else
-        ZvPar = ZvP.Tp;
-        Zcxs = [-0.2 0.02 0.2];
-        Zlab = '$\Theta(p_z)$';
-        TvPar = TvP.Tp;
-        Tcxs = Zcxs;%[-0.1 0.01 0.1];
-        Tlab = '$\Theta(p_\Theta)$';
-        yvar = YvP.Tp;
-        ycxs = Zcxs;%[-0.1 0.01 0.1];
-        Ylab = '$\Theta(p_\phi)$';
-    end        
-        
-    %%%%%% Plot all anomalies time series:
+xlims = [yr1 yr1+nyrs];
 
-    xlims = [yr1 yr1+nyrs];
+% ENSO Focus settings:
+zlim = [0 10];
+tlim = [0 10];
+yylim = [40 85];
+xlims = [300 350];
+Zcxs = [-0.2 0.01 0.2];
+Tcxs = [-0.2 0.01 0.2];
+ycxs = [-0.2 0.01 0.2];
 
-    % ENSO Focus settings:
-    zlim = [0 10];
-    tlim = [0 10];
-    yylim = [40 85];
-    xlims = [300 350];
-    Zcxs = [-0.2 0.01 0.2];
-    Tcxs = [-0.2 0.01 0.2];
-    ycxs = [-0.2 0.01 0.2];
+[tmp t1] = min(abs(time-xlims(1)));
+[tmp t2] = min(abs(time-xlims(2)));
 
-    [tmp t1] = min(abs(time-xlims(1)));
-    [tmp t2] = min(abs(time-xlims(2)));
-    
-    figure;
-    set(gcf,'Position',[1 41 2560 1330]);
-    set(gcf,'defaulttextfontsize',15);
-    set(gcf,'defaultaxesfontsize',15);
-    [X,Y] = ndgrid(time(t1:t2),Z_YvPar);
-    subplot(3,1,1);
-    contourf(X,Y,ZvPar(:,t1:t2)',[-1e50 Zcxs(1):Zcxs(2):Zcxs(3) 1e50],'linestyle','none');
-    caxis([Zcxs(1) Zcxs(3)]);
-    ylim(zlim);
-    xlim(xlims);
+figure;
+set(gcf,'Position',[1 41 2560 1330]);
+set(gcf,'defaulttextfontsize',15);
+set(gcf,'defaultaxesfontsize',15);
+[X,Y] = ndgrid(time(t1:t2),Z_YvPar);
+subplot(3,1,1);
+contourf(X,Y,ZvPar(:,t1:t2)',[-1e50 Zcxs(1):Zcxs(2):Zcxs(3) 1e50],'linestyle','none');
+caxis([Zcxs(1) Zcxs(3)]);
+ylim(zlim);
+xlim(xlims);
 % $$$     xlabel('Year');
-    set(gca,'xticklabel',[]);
-    ylabel(zlab);
+set(gca,'xticklabel',[]);
+ylabel(zlab);
 % $$$     cb = colorbar;
 % $$$     ylabel(cb,'Temperature Anomalies ($^\circ$C)','Interpreter','latex');
-    text(xlims(1)+(xlims(2)-xlims(1))*0.01,0.93*zlim(2),['ACCESS-CM2 PI-control ' Zlab ' anomalies'],'Backgroundcolor','w');
-    set(gca,'Position',[0.13 0.69 0.75 0.29]);
-    if (~remap_to_T)
-        set(gca,'ydir','reverse');
-        ax1=gca;
-        ax1_pos = ax1.Position; % position of first axes
-        ax1_pos(1) = ax1_pos(1)*0.7;
-        ax1_pos(3) = 0.00001;
-        ax2 = axes('Position',ax1_pos,...
-                   'Color','none');
-        set(ax2,'FontSize',15);
-        Zticks = [0:500:4000 5000];
+text(xlims(1)+(xlims(2)-xlims(1))*0.01,0.93*zlim(2),['ACCESS-CM2 PI-control ' Zlab ' anomalies'],'Backgroundcolor','w');
+set(gca,'Position',[0.13 0.69 0.75 0.29]);
+if (~remap_to_T)
+    set(gca,'ydir','reverse');
+    ax1=gca;
+    ax1_pos = ax1.Position; % position of first axes
+    ax1_pos(1) = ax1_pos(1)*0.7;
+    ax1_pos(3) = 0.00001;
+    ax2 = axes('Position',ax1_pos,...
+               'Color','none');
+    set(ax2,'FontSize',15);
+    Zticks = [0:500:4000 5000];
 % $$$         Zticks = [0:50:800];
 % $$$         Zticks = [3000:250:5500];
-        Pticks = zeros(size(Zticks));
-        for ii=1:length(Zticks)
-            Pticks(ii) = interp1(zofP_mean,P,-Zticks(ii),'linear');
-        end
-        Pticks(1) = 0;
-        set(ax2,'ytick',Pticks);
-        set(ax2,'yticklabel',Zticks);
-        ylabel(ax2,'Depth (m)');
-        ylim(ax2,zlim);
-        set(ax2,'ydir','reverse');
-    end        
-    
-    [X,Y] = ndgrid(time(t1:t2),T_YvPar);
-    subplot(3,1,2);
-    contourf(X,Y,TvPar(:,t1:t2)',[-1e50 Tcxs(1):Tcxs(2):Tcxs(3) 1e50],'linestyle','none');
-    caxis([Tcxs(1) Tcxs(3)]);
-    ylim(tlim);
-    xlim(xlims);
-    colormap(redblue);
+    Pticks = zeros(size(Zticks));
+    for ii=1:length(Zticks)
+        Pticks(ii) = interp1(zofP_mean,P,-Zticks(ii),'linear');
+    end
+    Pticks(1) = 0;
+    set(ax2,'ytick',Pticks);
+    set(ax2,'yticklabel',Zticks);
+    ylabel(ax2,'Depth (m)');
+    ylim(ax2,zlim);
+    set(ax2,'ydir','reverse');
+end        
+
+[X,Y] = ndgrid(time(t1:t2),T_YvPar);
+subplot(3,1,2);
+contourf(X,Y,TvPar(:,t1:t2)',[-1e50 Tcxs(1):Tcxs(2):Tcxs(3) 1e50],'linestyle','none');
+caxis([Tcxs(1) Tcxs(3)]);
+ylim(tlim);
+xlim(xlims);
+colormap(redblue);
 % $$$     xlabel('Year');
-    set(gca,'xticklabel',[]);
-    ylabel(tlab);
-    cb = colorbar;
-    ylabel(cb,'Temperature Anomalies ($^\circ$C)','Interpreter','latex');
-    text(xlims(1)+(xlims(2)-xlims(1))*0.01,0.73*tlim(2),['ACCESS-CM2 PI-control ' Tlab ' anomalies'],'Backgroundcolor','w');
-    set(gca,'Position',[0.13 0.37 0.75 0.29]);
-    if (~remap_to_T)
-        set(gca,'ydir','reverse');
-        ax1=gca;
-        ax1_pos = ax1.Position; % position of first axes
-        ax1_pos(1) = ax1_pos(1)*0.7;
-        ax1_pos(3) = 0.00001;
-        ax2 = axes('Position',ax1_pos,...
-                   'Color','none');
-        set(ax2,'FontSize',15);
+set(gca,'xticklabel',[]);
+ylabel(tlab);
+cb = colorbar;
+ylabel(cb,'Temperature Anomalies ($^\circ$C)','Interpreter','latex');
+text(xlims(1)+(xlims(2)-xlims(1))*0.01,0.73*tlim(2),['ACCESS-CM2 PI-control ' Tlab ' anomalies'],'Backgroundcolor','w');
+set(gca,'Position',[0.13 0.37 0.75 0.29]);
+if (~remap_to_T)
+    set(gca,'ydir','reverse');
+    ax1=gca;
+    ax1_pos = ax1.Position; % position of first axes
+    ax1_pos(1) = ax1_pos(1)*0.7;
+    ax1_pos(3) = 0.00001;
+    ax2 = axes('Position',ax1_pos,...
+               'Color','none');
+    set(ax2,'FontSize',15);
 % $$$         Zticks = [30 18 12:-2:-2];
-        Zticks = [30 15 10:-2:0];
+    Zticks = [30 15 10:-2:0];
 % $$$         Zticks = [30 22 18 16:-2:8];
 % $$$         Zticks = [2:-0.25:-0.5 -2];
-        Pticks = zeros(size(Zticks));
-        for ii=1:length(Zticks)
-            Pticks(ii) = interp1(TvP.Tp_mean,P,Zticks(ii),'linear');
-        end
-        set(ax2,'ytick',Pticks);
-        set(ax2,'yticklabel',Zticks);
-        ylabel(ax2,'Temperature ($^\circ$C)');
-        ylim(ax2,zlim);
-        set(ax2,'ydir','reverse');
+    Pticks = zeros(size(Zticks));
+    for ii=1:length(Zticks)
+        Pticks(ii) = interp1(TvP.Tp_mean,P,Zticks(ii),'linear');
     end
+    set(ax2,'ytick',Pticks);
+    set(ax2,'yticklabel',Zticks);
+    ylabel(ax2,'Temperature ($^\circ$C)');
+    ylim(ax2,zlim);
+    set(ax2,'ydir','reverse');
+end
 
-    [X,Y] = ndgrid(time(t1:t2),y_YvPar);
-    subplot(3,1,3);
-    contourf(X,Y,yvar(:,t1:t2)',[-1e50 ycxs(1):ycxs(2):ycxs(3) 1e50],'linestyle','none');
-    caxis([ycxs(1) ycxs(3)]);
-    ylim(yylim);
-    xlim(xlims);
-    xlabel('Year');
-    ylabel(ylab);
+[X,Y] = ndgrid(time(t1:t2),y_YvPar);
+subplot(3,1,3);
+contourf(X,Y,yvar(:,t1:t2)',[-1e50 ycxs(1):ycxs(2):ycxs(3) 1e50],'linestyle','none');
+caxis([ycxs(1) ycxs(3)]);
+ylim(yylim);
+xlim(xlims);
+xlabel('Year');
+ylabel(ylab);
 % $$$     cb = colorbar;
 % $$$     ylabel(cb,'Temperature Anomalies ($^\circ$C)','Interpreter','latex');
-    text(xlims(1)+(xlims(2)-xlims(1))*0.01,83,['ACCESS-CM2 PI-control ' Ylab ' anomalies'],'Backgroundcolor','w');
-    set(gca,'Position',[0.13 0.05 0.75 0.29]);
-    if (~remap_to_T)
-        ax1=gca;
-        ax1_pos = ax1.Position; % position of first axes
-        ax1_pos(1) = ax1_pos(1)*0.7;
-        ax1_pos(3) = 0.00001;
-        ax2 = axes('Position',ax1_pos,...
-                   'Color','none');
-        set(ax2,'FontSize',15);
-        Zticks = [-75:15:60];
-        Pticks = zeros(size(Zticks));
-        for ii=1:length(Zticks)
-            Pticks(ii) = interp1(yofP_mean,P,Zticks(ii),'linear');
-        end
-        Pticks(1) = 0;
-        set(ax2,'ytick',Pticks);
-        set(ax2,'yticklabel',Zticks);
-        ylabel(ax2,'Latitude ($^\circ$N)');
-        ylim(ax2,yylim);
+text(xlims(1)+(xlims(2)-xlims(1))*0.01,83,['ACCESS-CM2 PI-control ' Ylab ' anomalies'],'Backgroundcolor','w');
+set(gca,'Position',[0.13 0.05 0.75 0.29]);
+if (~remap_to_T)
+    ax1=gca;
+    ax1_pos = ax1.Position; % position of first axes
+    ax1_pos(1) = ax1_pos(1)*0.7;
+    ax1_pos(3) = 0.00001;
+    ax2 = axes('Position',ax1_pos,...
+               'Color','none');
+    set(ax2,'FontSize',15);
+    Zticks = [-75:15:60];
+    Pticks = zeros(size(Zticks));
+    for ii=1:length(Zticks)
+        Pticks(ii) = interp1(yofP_mean,P,Zticks(ii),'linear');
     end
+    Pticks(1) = 0;
+    set(ax2,'ytick',Pticks);
+    set(ax2,'yticklabel',Zticks);
+    ylabel(ax2,'Latitude ($^\circ$N)');
+    ylim(ax2,yylim);
+end
 
-    %%%%%% Plot budget terms:
-    xlims = [yr1 yr1+nyrs];
 
-    % ENSO Focus settings:
-    zlim = [0 10];
-    tlim = [0 10];
-    yylim = [40 85];
-    xlims = [300 350];
-    Zcxs = [-0.2 0.01 0.2];
-    Tcxs = [-0.2 0.01 0.2];
-    ycxs = [-0.2 0.01 0.2];
+% ENSO Time series to go with that:
+figure;
+set(gcf,'Position',[1 41 2560 1330]);
+set(gcf,'defaulttextfontsize',15);
+set(gcf,'defaultaxesfontsize',15);
+subplot(2,1,1);
+plot(time(t1:t2),N34(t1:t2),'-k');
+hold on;
+plot(time(t1:t2),GMSST(t1:t2)'*10,'-r');
+plot(time(t1:t2),OHC(t1:t2)/1e22,'-','color',[0.5 0.5 0.5]);
+legend('Nino 3.4','Global SST * 10','Global OHC anomaly ($/10^{22} J$)');
+ylabel('SST ($^\circ$C)');
+xlim(xlims);
+xlabel('Year');
 
-    [tmp t1] = min(abs(time-xlims(1)));
-    [tmp t2] = min(abs(time-xlims(2)));
-    
-    bvars = {'TENp','ADVp','FORp','RMIXp','VMIXp'};
-    names = {'Tendency','Advection','Forcing','Redi Mixing','Vertical ' ...
-                        'Mixing'};
 
-    figure;
-    set(gcf,'Position',[1 41 2560 1330]);
-    set(gcf,'defaulttextfontsize',15);
-    set(gcf,'defaultaxesfontsize',15);
+%%%%%% Plot P-t of anomalies + budget terms %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    [X,Y] = ndgrid(time(t1:t2),P);
-    subplot(3,2,1);
-    contourf(X,Y,ZvPar(:,t1:t2)',[-1e50 Zcxs(1):Zcxs(2):Zcxs(3) 1e50],'linestyle','none');
+xlims = [yr1 yr1+nyrs];
+xlims = [300 400];
+
+[tmp t1] = min(abs(time-xlims(1)));
+[tmp t2] = min(abs(time-xlims(2)));
+bvars = {'TENp','ADVp','FORp','RMIXp','VMIXp'};
+names = {'Tendency','Advection','Forcing','Redi Mixing', ...
+         'Vertical Mixing'};
+
+poss = [0.0539 0.7073 0.4 0.26; ...
+        0.5168 0.7073 0.4 0.26; ...
+        0.0539 0.3979 0.4 0.26; ...
+        0.5168 0.3979 0.4 0.26; ...
+        0.0539 0.0792 0.4 0.26; ...
+        0.5168 0.0792 0.4 0.26;];
+
+% Depth percentile:
+Zcxs = [-0.3 0.01 0.3];Zlab = '$\Theta(p_z)$';
+zlim = [0 15];zlab = 'Depth Percentile $p_z$';
+
+figure;
+set(gcf,'Position',[1          36        1920         970]);
+set(gcf,'defaulttextfontsize',15);
+set(gcf,'defaultaxesfontsize',15);
+
+[X,Y] = ndgrid(time(t1:t2),P);
+subplot(3,2,1);
+contourf(X,Y,ZvP.Tp(:,t1:t2)',[-1e50 Zcxs(1):Zcxs(2):Zcxs(3) 1e50],'linestyle','none');
+caxis([Zcxs(1) Zcxs(3)]);
+ylim(zlim);
+ylabel(zlab);
+set(gca,'ydir','reverse');
+set(gca,'xticklabel',[]);
+title([Zlab ' Anomalies']);
+set(gca,'Position',poss(1,:));
+
+for vi = 1:length(bvars)
+    [X,Y] = ndgrid(time(t1:t2),Pe);
+    eval(['var = ZvP.' bvars{vi} '(:,t1:t2);']);
+    subplot(3,2,1+vi);
+    contourf(avg(X,2),avg(Y,2),var',[-1e50 Zcxs(1):Zcxs(2):Zcxs(3) 1e50],'linestyle','none');
     caxis([Zcxs(1) Zcxs(3)]);
     ylim(zlim);
-    xlim(xlims);
-    set(gca,'xticklabel',[]);
-    ylabel(zlab);
-    text(xlims(1)+(xlims(2)-xlims(1))*0.01,0.93*zlim(2),['ACCESS-CM2 PI-control ' Zlab ' anomalies'],'Backgroundcolor','w');
-    set(gca,'ydir','reverse');
-        
-    for vi = 1:length(bvars)
-        [X,Y] = ndgrid(time(t1:t2),Pe);
-        eval(['var = ZvP.' bvars{vi} ';']);
-        subplot(3,2,1+vi);
-        contourf(avg(X,2),avg(Y,2),var(:,t1:t2)',[-1e50 Zcxs(1):Zcxs(2):Zcxs(3) 1e50],'linestyle','none');
-        caxis([Zcxs(1) Zcxs(3)]);
-        ylim(zlim);
-        xlim(xlims);
-        if (vi<4)
-            set(gca,'xticklabel',[]);
-        else
-            xlabel('Year');
-        end
-        ylabel(zlab);
-        text(xlims(1)+(xlims(2)-xlims(1))*0.01,0.93*zlim(2),names{vi},'Backgroundcolor','w');
-        set(gca,'ydir','reverse');
+    if (vi<4)
+        set(gca,'xticklabel',[]);
+    else
+        xlabel('Year');
     end
-    colormap(redblue);
+    if (vi == 2 | vi == 4)
+        ylabel(zlab);
+    else
+        cb = colorbar;
+        ylabel(cb,'$^\circ$C');
+    end
+    set(gca,'ydir','reverse');
+    title(names{vi});
+    set(gca,'Position',poss(1+vi,:));
+end
+colormap(redblue);
 
-    figure;
-    set(gcf,'Position',[1 41 2560 1330]);
-    set(gcf,'defaulttextfontsize',15);
-    set(gcf,'defaultaxesfontsize',15);
+% Temperature Percentile:
+Tcxs = [-0.2 0.01 0.2];
+tlim = [0 35];
+Tlab = '$\Theta(p_\Theta)$';
+tlab = 'Temperature Percentile $p_\Theta$';
 
-    [X,Y] = ndgrid(time(t1:t2),P);
-    subplot(3,2,1);
-    contourf(X,Y,TvPar(:,t1:t2)',[-1e50 Tcxs(1):Tcxs(2):Tcxs(3) 1e50],'linestyle','none');
+figure;
+set(gcf,'Position',[1          36        1920         970]);
+set(gcf,'defaulttextfontsize',15);
+set(gcf,'defaultaxesfontsize',15);
+
+[X,Y] = ndgrid(time(t1:t2),P);
+subplot(3,2,1);
+contourf(X,Y,TvP.Tp(:,t1:t2)',[-1e50 Tcxs(1):Tcxs(2):Tcxs(3) 1e50],'linestyle','none');
+caxis([Tcxs(1) Tcxs(3)]);
+ylim(tlim);
+ylabel(tlab);
+set(gca,'ydir','reverse');
+set(gca,'xticklabel',[]);
+title([Tlab ' Anomalies']);
+set(gca,'Position',poss(1,:));
+
+for vi = 1:length(bvars)
+    [X,Y] = ndgrid(time(t1:t2),Pe);
+    eval(['var = TvP.' bvars{vi} '(:,t1:t2);']);
+    subplot(3,2,1+vi);
+    contourf(avg(X,2),avg(Y,2),var',[-1e50 Tcxs(1):Tcxs(2):Tcxs(3) 1e50],'linestyle','none');
     caxis([Tcxs(1) Tcxs(3)]);
     ylim(tlim);
-    xlim(xlims);
-    colormap(redblue);
-% $$$     xlabel('Year');
-    set(gca,'xticklabel',[]);
-    ylabel(tlab);
-    cb = colorbar;
-    ylabel(cb,'Temperature Anomalies ($^\circ$C)','Interpreter','latex');
-    text(xlims(1)+(xlims(2)-xlims(1))*0.01,0.73*tlim(2),['ACCESS-CM2 PI-control ' Tlab ' anomalies'],'Backgroundcolor','w');
-    set(gca,'ydir','reverse');
-        
-    for vi = 1:length(bvars)
-        [X,Y] = ndgrid(time(t1:t2),Pe);
-        eval(['var = TvP.' bvars{vi} ';']);
-        subplot(3,2,1+vi);
-        contourf(avg(X,2),avg(Y,2),var(:,t1:t2)',[-1e50 Tcxs(1):Tcxs(2):Tcxs(3) 1e50],'linestyle','none');
-        caxis([Tcxs(1) Tcxs(3)]);
-        ylim(tlim);
-        xlim(xlims);
-        if (vi<4)
-            set(gca,'xticklabel',[]);
-        else
-            xlabel('Year');
-        end
+    if (vi<4)
+        set(gca,'xticklabel',[]);
+    else
+        xlabel('Year');
+    end
+    if (vi == 2 | vi == 4)
         ylabel(tlab);
-        text(xlims(1)+(xlims(2)-xlims(1))*0.01,0.93*zlim(2),names{vi},'Backgroundcolor','w');
-        set(gca,'ydir','reverse');
+    else
+        cb = colorbar;
+        ylabel(cb,'$^\circ$C');
     end
-    colormap(redblue);
+    set(gca,'ydir','reverse');
+    title(names{vi});
+    set(gca,'Position',poss(1+vi,:));
+end
+colormap(redblue);
 
-    figure;
-    set(gcf,'Position',[1 41 2560 1330]);
-    set(gcf,'defaulttextfontsize',15);
-    set(gcf,'defaultaxesfontsize',15);
-    [X,Y] = ndgrid(time(t1:t2),P);
-    subplot(3,2,1);
-    contourf(X,Y,yvar(:,t1:t2)',[-1e50 ycxs(1):ycxs(2):ycxs(3) 1e50],'linestyle','none');
-    caxis([ycxs(1) ycxs(3)]);
+% Latitude percentile:
+Ycxs = [-0.1 0.005 0.1];Ylab = '$\Theta(p_\phi)$';
+yylim = [0 100];
+ylab = 'Latitude Percentile $p_\phi$';
+
+figure;
+set(gcf,'Position',[1          36        1920         970]);
+set(gcf,'defaulttextfontsize',15);
+set(gcf,'defaultaxesfontsize',15);
+
+[X,Y] = ndgrid(time(t1:t2),P);
+subplot(3,2,1);
+contourf(X,Y,YvP.Tp(:,t1:t2)',[-1e50 Ycxs(1):Ycxs(2):Ycxs(3) 1e50],'linestyle','none');
+caxis([Ycxs(1) Ycxs(3)]);
+ylim(yylim);
+ylabel(ylab);
+set(gca,'ydir','reverse');
+set(gca,'xticklabel',[]);
+title([Ylab ' Anomalies']);
+set(gca,'Position',poss(1,:));
+
+for vi = 1:length(bvars)
+    [X,Y] = ndgrid(time(t1:t2),Pe);
+    eval(['var = YvP.' bvars{vi} '(:,t1:t2);']);
+    subplot(3,2,1+vi);
+    contourf(avg(X,2),avg(Y,2),var',[-1e50 Ycxs(1):Ycxs(2):Ycxs(3) 1e50],'linestyle','none');
+    caxis([Ycxs(1) Ycxs(3)]);
     ylim(yylim);
-    xlim(xlims);
-    xlabel('Year');
-    ylabel(ylab);
-% $$$     cb = colorbar;
-% $$$     ylabel(cb,'Temperature Anomalies ($^\circ$C)','Interpreter','latex');
-    text(xlims(1)+(xlims(2)-xlims(1))*0.01,83,['ACCESS-CM2 PI-control ' Ylab ' anomalies'],'Backgroundcolor','w');
-    for vi = 1:length(bvars)
-        [X,Y] = ndgrid(time(t1:t2),Pe);
-        eval(['var = YvP.' bvars{vi} ';']);
-        subplot(3,2,1+vi);
-        contourf(avg(X,2),avg(Y,2),var(:,t1:t2)',[-1e50 ycxs(1):ycxs(2):ycxs(3) 1e50],'linestyle','none');
-        caxis([ycxs(1) ycxs(3)]);
-        ylim(yylim);
-        xlim(xlims);
-        if (vi<4)
-            set(gca,'xticklabel',[]);
-        else
-            xlabel('Year');
-        end
-        ylabel(ylab);
-        text(xlims(1)+(xlims(2)-xlims(1))*0.01,0.93*zlim(2),names{vi},'Backgroundcolor','w');
-        set(gca,'ydir','reverse');
+    if (vi<4)
+        set(gca,'xticklabel',[]);
+    else
+        xlabel('Year');
     end
-    colormap(redblue);
+    if (vi == 2 | vi == 4)
+        ylabel(ylab);
+    else
+        cb = colorbar;
+        ylabel(cb,'$^\circ$C');
+    end
+    set(gca,'ydir','reverse');
+    title(names{vi});
+    set(gca,'Position',poss(1+vi,:));
+end
+colormap(redblue);
 
 
-% $$$ 
-% $$$     % Time series to go with that:
-% $$$     figure;
-% $$$     set(gcf,'Position',[1 41 2560 1330]);
-% $$$     set(gcf,'defaulttextfontsize',15);
-% $$$     set(gcf,'defaultaxesfontsize',15);
-% $$$     subplot(2,1,1);
-% $$$     plot(time(t1:t2),N34(t1:t2),'-k');
-% $$$     hold on;
-% $$$     plot(time(t1:t2),GMSST(t1:t2)'*10,'-r');
-% $$$     plot(time(t1:t2),OHC(t1:t2)/1e22,'-','color',[0.5 0.5 0.5]);
-% $$$     legend('Nino 3.4','Global SST * 10','Global OHC anomaly ($/10^{22} J$)');
-% $$$     ylabel('SST ($^\circ$C)');
-% $$$     xlim(xlims);
-% $$$     xlabel('Year');
-% $$$ 
-% $$$     %%%%% Spectral analysis:
-% $$$     fs = 12;
-% $$$     [pxx,f] = pmtm(ZvPar(15,:)',[],[],fs);
-% $$$     fL = length(f);
-% $$$     TvPar_spec = zeros(fL,PL);
-% $$$     ZvPar_spec = zeros(fL,PL);
-% $$$     yvar_spec = zeros(fL,PL);
-% $$$     for pi=1:PL
-% $$$         [ZvPar_spec(:,pi),~] = pmtm(ZvPar(pi,:)',[],[],fs);
-% $$$         [TvPar_spec(:,pi),~] = pmtm(TvPar(pi,:)',[],[],fs);
-% $$$         [yvar_spec(:,pi),~] = pmtm(yvar(pi,:)',[],[],fs);
-% $$$     end
+%%%%% Spectral analysis: %%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+fs = 12;
+[pxx,f] = pmtm(ZvP.Tp(15,:)',[],[],fs);
+fL = length(f);
+
+vars = {'Tp','TENp','ADVp','FORp','RMIXp','VMIXp'};
+
+for ti=1:length(typs)
+    for vi=1:length(vars)
+        vars{vi}
+        eval(['var = ' typs{ti} 'vP.' vars{vi} ';']);
+        lg = length(var(:,1));
+        spec = zeros(fL,lg);
+        for pi=1:lg
+            [spec(:,pi),~] = pmtm(var(pi,:)',[],[],fs);
+        end
+        eval([typs{ti} 'vP.' vars{vi} '_spec = spec;']);
+    end
+end
+
+% Spectral average (no budget):
+figure;
+set(gcf,'Position',[421.7 537.7 1213.3 614.7]);
+plot(f,log10(mean(ZvP.Tp_spec,2)),'-k','linewidth',2);
+hold on;
+plot(f,log10(mean(TvP.Tp_spec,2)),'-r','linewidth',2);
+plot(f,log10(mean(YvP.Tp_spec,2)),'-b','linewidth',2);
+xlim([1/250 1]);    
+xlab = [300 100 50 10 7 5 3 2 1];
+set(gca,'xscale','log');
+set(gca,'xtick',1./xlab);
+set(gca,'xticklabel',xlab);
+xlabel('Period (years)');
+legend('$\Theta(p_z)$','$\Theta(p_\Theta)$','$\Theta(p_\phi)$');
+ylabel('Multi-taper power spectra ($^\circ$C$^2$/year)');
+title('ACCESS-CM2 PI-control Percentile-Averaged Spectra');
+
+% Spectral average (no budget):
+colors = {'m','b','k','r',[0 0.5 0]};     
+for ti=1:length(typs)
+    figure;
+    set(gcf,'Position',[421.7 537.7 1213.3 614.7]);
+% $$$     eval(['var = ' typs{ti} 'vP.Tp_spec;']);
+% $$$     plot(f,log10(mean(var,2)),'--','linewidth',2,'color','k');
+    for vi=2:length(vars)
+        eval(['var = ' typs{ti} 'vP.' vars{vi} '_spec;']);
+        plot(f,log10(mean(var,2)),'-','linewidth',2,'color',colors{vi-1});
+    hold on;
+    end
+xlim([1/250 1]);    
+xlab = [300 100 50 10 7 5 3 2 1];
+set(gca,'xscale','log');
+set(gca,'xtick',1./xlab);
+set(gca,'xticklabel',xlab);
+xlabel('Period (years)');
+legend(names{:});
+ylabel('Multi-taper power spectra ($^\circ$C$^2$/year)');
+title('ACCESS-CM2 PI-control Percentile-Averaged Spectra');
+end
+
+
 % $$$     
 % $$$     figure;
 % $$$     set(gcf,'Position',[1 41 2560 1330]);
