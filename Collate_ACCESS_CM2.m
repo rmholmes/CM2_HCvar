@@ -24,7 +24,7 @@ Zvfields = fieldnames(Zv);
 Yvfields = fieldnames(Yv);
 
 for fi = 2:length(nums)
-    fname = sprintf([base 'CM2_' name '_%08d.mat'],nums(fi));
+    fname = sprintf([base 'CM2_' name '_%08d.mat'],nums(fi))
     next = load(fname);
 
     time = cat(1,time,next.time);
