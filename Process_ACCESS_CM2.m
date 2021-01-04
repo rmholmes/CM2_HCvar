@@ -3,6 +3,7 @@
 % INPUTS:
 % fname = six-month ocean_month.nc file name to process.
 % oname = output .mat file-name.
+% msk   = mask key
 
 % Choices:
 dT = 0.2; % temperature grid size.
@@ -20,8 +21,8 @@ TL = length(T);
     
 % Constant grid parameters:
 area = ncread(fname,'area_t');
-% $$$     lon = ncread(fname,'geolon_t');
-% $$$     lat = ncread(fname,'geolat_t');
+lon = ncread(fname,'geolon_t');
+lat = ncread(fname,'geolat_t');
 lonv = ncread(fname,'xt_ocean');
 latv = ncread(fname,'yt_ocean');
 latu = ncread(fname,'yu_ocean');
@@ -37,10 +38,22 @@ zL = length(Z);
 temp = ncread(fname,'temp',[1 1 1 1],[xL yL zL 1]);
 mask = ~isnan(temp);
 
+% region mask:
+if (msk == '')
+    'Global'
+    mask2D = ones(xL,yL);
+elseif (msk = 'NH')
+    'Northern Hemisphere'
+    mask2D = 1*(lat>0);
+elseif (msk = 'SH')
+    'Southern Hemisphere'
+    mask2D = 1*(lat<=0);
+end
+
 % A(z):
 A = zeros(zL,1);
 for zi=1:zL
-    A(zi) = nansum(nansum(area(mask(:,:,zi))));
+    A(zi) = nansum(nansum(area(mask(:,:,zi).*mask2D)));
 end
 
 % Time info:
@@ -57,7 +70,7 @@ save(oname,'Cp','rho0','dT','Te','T','TL',...
 temp = ncread(fname,'temp');
 temp(~mask) = NaN;
 if (max(max(temp))>120); temp=temp-273.15;end;
-V = ncread(fname,'dht').*repmat(area,[1 1 zL tL]);
+V = ncread(fname,'dht').*repmat(area.*mask2D,[1 1 zL tL]);
 V(isnan(V)) = 0;
 H = rho0*Cp*temp.*V;
 SST = squeeze(temp(:,:,1,:));
@@ -82,14 +95,14 @@ for Ti=1:TL
     Tv.V(Ti,:) = Tv.V(Ti,:) + squeeze(nansum(nansum(nansum(V.*inds,1),2),3))';
     Tv.H(Ti,:) = Tv.H(Ti,:) + squeeze(nansum(nansum(nansum(H.*inds,1),2),3))';
     indsS = SST>=Te(Ti) & SST<Te(Ti+1);
-    Tv.A(Ti,:) = Tv.A(Ti,:) + squeeze(nansum(nansum(repmat(area,[1 1 tL]).*indsS,1),2))';
+    Tv.A(Ti,:) = Tv.A(Ti,:) + squeeze(nansum(nansum(repmat(area.*mask2D,[1 1 tL]).*indsS,1),2))';
 end
 % Account for water warmer than max temperature (possible for CM2):
 inds = temp>Te(end);
 Tv.V(end,:) = Tv.V(end,:) + squeeze(nansum(nansum(nansum(V.*inds,1),2),3))';
 Tv.H(end,:) = Tv.H(end,:) + squeeze(nansum(nansum(nansum(H.*inds,1),2),3))';
 indsS = SST>Te(end);
-Tv.A(end,:) = Tv.A(end,:) + squeeze(nansum(nansum(repmat(area,[1 1 tL]).*indsS,1),2))';
+Tv.A(end,:) = Tv.A(end,:) + squeeze(nansum(nansum(repmat(area.*mask2D,[1 1 tL]).*indsS,1),2))';
 
 % $$$ Yv.time = time; Tv.DT_A = DT_A;
 % $$$ Zv.time = time; Zv.DT_A = DT_A;
@@ -152,7 +165,7 @@ end
 
 % Loop through tendency variables:
 for vi =1:length(bvars3D)
-    var = ncread(fname,bvars3D{vi}).*repmat(area,[1 1 zL tL]);
+    var = ncread(fname,bvars3D{vi}).*repmat(area.*mask2D,[1 1 zL tL]);
     
     % Depth binning:
     eval(['Zv.' bvars3D{vi} ' = squeeze(nansum(nansum(var,1),2));']);
@@ -172,7 +185,7 @@ for vi =1:length(bvars3D)
           '(end,:) + squeeze(nansum(nansum(nansum(var.*inds,1),2),3))'';']);
 end
 for vi =1:length(bvars2D)
-    var = ncread(fname,bvars2D{vi}).*repmat(area,[1 1 tL]);
+    var = ncread(fname,bvars2D{vi}).*repmat(area.*mask2D,[1 1 tL]);
 
     % Depth binning:
     varz = squeeze(nansum(nansum(var,1),2));

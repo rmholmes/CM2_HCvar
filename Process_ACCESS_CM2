@@ -13,5 +13,5 @@
 module load matlab
 module load matlab_licence/unsw
 
-matlab -nodisplay -nodesktop -nosplash -r "fname='XXFNAMEXX';oname='XXONAMEXX';Process_ACCESS_CM2;exit;"
+matlab -nodisplay -nodesktop -nosplash -r "fname='XXFNAMEXX';oname='XXONAMEXX';msk='XXMSKXX';Process_ACCESS_CM2;exit;"
 

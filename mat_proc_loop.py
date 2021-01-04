@@ -21,20 +21,23 @@ dates = [x[-8:] for x in files]
 
 dates = sorted(dates,key=lambda x: int(x))
 
-# Split into sets of 300 runs:
-ss = 3
+% Mask:
+msk = 'NH'
+
+# Split into sets of 300 runs (ss is 0,1,2 or 3):
+ss = 0
 dates = dates[ss*300:ss*300+300]
 
 print(dates)
 print(len(dates))#len(dates))
 for i in range(len(dates)):
     fname = base + 'ocean_month.nc-' + dates[i]
-    oname = obase + 'CM2_' + name + '_' + dates[i] + '.mat'
-    fscr = 'fscripts/Process_ACCESS_' + dates[i]
+    oname = obase + 'CM2_' + name + '_' msk + '_' + dates[i] + '.mat'
+    fscr = 'fscripts/Process_ACCESS_' + msk + '_' + dates[i]
     os.system('cp Process_ACCESS_CM2 ' + fscr)
     with fileinput.FileInput(fscr, inplace=True) as file:
         for line in file:
-            line_out = line.replace('XXNAMEXX', 'P' + dates[i]).replace('XXFNAMEXX', fname).replace('XXONAMEXX', oname)
+            line_out = line.replace('XXNAMEXX', 'P' + dates[i]).replace('XXFNAMEXX', fname).replace('XXONAMEXX', oname).replace('XXMSKXX', msk)
             print(line_out, end='')
     os.system('qsub ' + fscr)
             
