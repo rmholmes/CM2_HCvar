@@ -41,13 +41,13 @@ temp = ncread(fname,'temp',[1 1 1 1],[xL yL zL 1]);
 mask = ~isnan(temp);
 
 % region mask:
-if (msk == '')
+if (strcmp(msk,''))
     'Global'
     mask2D = ones(xL,yL);
-elseif (msk = 'NH')
+elseif (strcmp(msk,'NH'))
     'Northern Hemisphere'
     mask2D = 1*(lat>0);
-elseif (msk = 'SH')
+elseif (strcmp(msk,'SH'))
     'Southern Hemisphere'
     mask2D = 1*(lat<=0);
 end
@@ -55,7 +55,7 @@ end
 % A(z):
 A = zeros(zL,1);
 for zi=1:zL
-    A(zi) = nansum(nansum(area(mask(:,:,zi).*mask2D)));
+    A(zi) = nansum(nansum(area((mask(:,:,zi).*mask2D==1))));
 end
 
 % Time info:
