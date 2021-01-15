@@ -8,6 +8,8 @@
 % Choices:
 dT = 0.2; % temperature grid size.
 
+Tyz = 1; % Only do T(y,z).
+
 %%%% Grid (time-constant) and time info:
 
 % Constants:
@@ -61,10 +63,12 @@ time = ncread(fname,'time');
 DT_A = ncread(fname,'average_DT')*86400;
 tL = length(time);
 
+if (~Tyz)
 % Save grid info (doesn't vary with time):
 save(oname,'Cp','rho0','dT','Te','T','TL',...
      'xL','yL','zL','Z','Ze','zL','A', ...
      'latv','latv_edges','time','DT_A','tL');
+end
 
 %%%% Load processing variables:
 temp = ncread(fname,'temp');
@@ -75,6 +79,15 @@ V(isnan(V)) = 0;
 H = rho0*Cp*temp.*V;
 SST = squeeze(temp(:,:,1,:));
 
+%%%% Temperature anomalies in y-z:
+
+if (Tyz)
+    Tyz.V = squeeze(nansum(V,3));
+    Tyz.H = squeeze(nansum(H,3));
+    onameyz = [oname(1:end-4) '_Tyz.mat'];
+    save(onameyz,'Tyz');
+    
+else
 %%%% Heat and volume:
 
 % Latitude space:
@@ -207,4 +220,5 @@ end
 
 save(oname,'Tv','Zv','Yv','-append');
 
+end
 

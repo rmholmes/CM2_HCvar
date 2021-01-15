@@ -22,13 +22,13 @@ dates = [x[-8:] for x in files]
 dates = sorted(dates,key=lambda x: int(x))
 
 # Mask:
-msk = 'NH'
+msk = ''
 
 # Split into sets of 300 runs (ss is 0,1,2 or 3):
-#ss = 0
-#dates = dates[ss*300:ss*300+300]
+ss = 0
+dates = dates[ss*300:ss*300+300]
 
-dates = dates[:3]
+# dates = dates[:3]
 
 print(dates)
 print(len(dates))#len(dates))

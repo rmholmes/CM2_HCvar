@@ -4,12 +4,13 @@ clear all;
 PI_or_his = 1; % 1 = PI-control, 0 = historical simualtion
 if (PI_or_his)
     load('CM2_PIcontrol_ALL.mat');
+% $$$     load('CM2_PIcontrol_SH_ALL.mat');
 else
     load('CM2_historical_ALL.mat');
 end
 
 % Define a new percentile grid:
-dP = 0.25;
+dP = 1;%0.25;
 Pe = 0:dP:100;
 P = (Pe(2:end)+Pe(1:end-1))/2;
 PL = length(P);
@@ -17,6 +18,28 @@ PL = length(P);
 % Time vector:
 tL = length(time);
 time = time/365.25; % time in years
+
+% Coarse grain temperature bins (assumes linear):
+n = 1; % Coarse grain factor
+TLn = floor(TL/n);
+TLr = mod(TL,n);
+convm = zeros(TL,TLn);
+cnt = 1;
+for i=1:TLn
+    convm(cnt:(cnt+n-1),i) = 1;
+    cnt = cnt+n;
+end
+if (TLr>0)
+    convm((end-TLr+1):end,end) = 1;
+end
+dT = n*dT;
+Te = -3:dT:(-3+TLn*dT);
+T = (Te(2:end)+Te(1:end-1))/2;
+TL = length(T);
+fns = fieldnames(Tv);
+for vi=1:length(fns)
+    eval(['Tv.' fns{vi} ' = (Tv.' fns{vi} '''*convm)'';']);
+end
 
 % Fix advection budget term by residual:
 typs = {'T','Z','Y'};
@@ -36,6 +59,7 @@ end
 for vi = 1:length(typs)
     eval([typs{vi} 'v.TEN = ' typs{vi} 'v.temp_tendency;']);
     eval([typs{vi} 'v.ADV = ' typs{vi} 'v.temp_advection+' typs{vi} 'v.temp_submeso+' typs{vi} 'v.neutral_gm_temp;']);
+    eval([typs{vi} 'v.ADVGM = ' typs{vi} 'v.neutral_gm_temp;']);
     eval([typs{vi} 'v.FOR = ' typs{vi} 'v.temp_vdiffuse_sbc+' typs{vi} 'v.frazil_3d+' typs{vi} 'v.sw_heat' ...
           '+' typs{vi} 'v.temp_rivermix+' typs{vi} 'v.sfc_hflux_pme' ...
           '+' typs{vi} 'v.temp_eta_smooth;']);
@@ -139,7 +163,7 @@ OHC = squeeze(Zv.H_c(end,:))';
     TvP.Tap = zeros(PL,tL);
     ZvP.Tp = zeros(PL,tL);
     YvP.Tp = zeros(PL,tL);
-    bvars = {'TEN_c','ADV_c','FOR_c','RMIX_c','VMIX_c'};
+    bvars = {'TEN_c','ADV_c','ADVGM_c','FOR_c','RMIX_c','VMIX_c'};
     for ti = 1:tL
         TvP.Tp(:,ti) = interp1(Tv.P(:,ti)+(1:TL+1)'/1e10,Te,P,'linear');
         TvP.Tp(1,ti) = Te(end);
@@ -157,37 +181,46 @@ OHC = squeeze(Zv.H_c(end,:))';
         end
     end
     
-% $$$     %%%% Check budgets:
+% $$$     %%%% Check/plot budgets:
 % $$$     colors = {'m','b','k','r',[0 0.5 0]};     
-% $$$ % $$$     figure;
-% $$$ % $$$     set(gcf,'Position',[1921           1        1920        1005]);
-% $$$ % $$$     subplot(1,3,1);
-% $$$ % $$$     for gi=1:length(bvars)
-% $$$ % $$$         eval(['var = mean(ZvP.' bvars{gi} ',2);']);
-% $$$ % $$$         plot(var/1e15,Pe,'-','color',colors{gi},'linewidth',2);
-% $$$ % $$$         hold on;
-% $$$ % $$$     end
-% $$$ % $$$     plot([0 0],[0 100],'--k');
-% $$$ % $$$     ylabel('Depth percentile');
-% $$$ % $$$     set(gca,'ydir','reverse');
-% $$$ % $$$     ylim([0 100]);
-% $$$ % $$$     xlim([-2 2]);
-% $$$ % $$$     xlabel('Vertical heat transport (PW)');
-% $$$ % $$$     
+% $$$     figure;
+% $$$     set(gcf,'Position',[1921           1        1920        1005]);
+% $$$     subplot(1,3,1);
+% $$$     bvars = {'TEN_c','ADV_c','FOR_c','RMIX_c','VMIX_c'};
+% $$$     for gi=1:length(bvars)
+% $$$         eval(['var = mean(ZvP.' bvars{gi} ',2);']);
+% $$$         plot(var/1e15,Pe,'-','color',colors{gi},'linewidth',2);
+% $$$         hold on;
+% $$$     end
+% $$$     plot([0 0],[0 100],'--k');
+% $$$     ylabel('Percentile');
+% $$$     set(gca,'ydir','reverse');
+% $$$     ylim([0 100]);
+% $$$     xlim([-2 2]);
+% $$$     xlabel('Upward Vertical heat transport (PW)');
+% $$$     legend('$\partial\mathcal{H}_z/\partial t$','$\mathcal{A}_z$','$\mathcal{F}_z$',...
+% $$$            '$\mathcal{M}_z^{neutral}$',['$\' ...
+% $$$                         'mathcal{M}_z^{vertical}$']);
+% $$$     set(gca,'Position',[0.06   0.1400    0.2580    0.8150]);
+% $$$     
 % $$$     subplot(1,3,2);
+% $$$     bvars = {'TEN_c','ADV_c','FOR_c','RMIX_c','VMIX_c'};
 % $$$     for gi=1:length(bvars)
 % $$$         eval(['var = mean(TvP.' bvars{gi} ',2);']);
 % $$$         plot(var/1e15,Pe,'-','color',colors{gi},'linewidth',2);
 % $$$         hold on;
 % $$$     end
-% $$$     legend('Tendency','Advection','Surface Forcing','Neutral Mixing','Vertical Mixing');
 % $$$     plot([0 0],[0 100],'--k');
 % $$$     set(gca,'ydir','reverse');
 % $$$     ylim([0 100]);
-% $$$     ylabel('Temperature percentile');
-% $$$     xlabel('Diathermal heat transport (PW)');
+% $$$     set(gca,'yticklabel',[]);
+% $$$     xlabel('Cold-to-warm Diathermal heat transport (PW)');
+% $$$     legend('$\partial\mathcal{H}_\Theta/\partial t$','$\mathcal{M}_\Theta^{numerical}$','$\mathcal{F}_\Theta$',...
+% $$$            '$\mathcal{M}_\Theta^{neutral}$','$\mathcal{M}_\Theta^{vertical}$');
+% $$$     set(gca,'Position',[0.3661    0.1400    0.2580    0.8150]);
 % $$$ 
 % $$$     subplot(1,3,3);
+% $$$     bvars = {'TEN_c','ADV_c','FOR_c','RMIX_c'};
 % $$$     for gi=1:length(bvars)
 % $$$         eval(['var = mean(YvP.' bvars{gi} ',2);']);
 % $$$         plot(var/1e15,Pe,'-','color',colors{gi},'linewidth',2);
@@ -195,8 +228,10 @@ OHC = squeeze(Zv.H_c(end,:))';
 % $$$     end
 % $$$     plot([0 0],[0 100],'--k');
 % $$$     ylim([0 100]);
-% $$$     ylabel('Latitude percentile');
-% $$$     xlabel('Meridional heat transport (PW)');
+% $$$     xlabel('Southward Meridional heat transport (PW)');
+% $$$     legend('$\partial\mathcal{H}_\phi/\partial t$','$\mathcal{A}_\phi^{advective}$','$\mathcal{F}_\phi$',...
+% $$$            '$\mathcal{A}_\phi^{diffusive}$');
+% $$$     set(gca,'Position',[0.7    0.1400    0.2580    0.8150]);
 
 
     zofP_mean = -interp1(mean(Zv.P,2),Ze,P,'linear'); % Depth axis to
@@ -238,6 +273,7 @@ OHC = squeeze(Zv.H_c(end,:))';
         eval([TIMESERIES{vi} ' = ' TIMESERIES{vi} '(ti:(ti+tL-1));']);
     end
     time = time(ti:(ti+tL-1));
+    DT_A = DT_A(ti:(ti+tL-1));
     Vtot = Vtot(ti:(ti+tL-1));
     CIN.AMOCfull = CIN.AMOC;
     OHCfull = OHC;
