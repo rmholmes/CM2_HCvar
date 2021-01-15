@@ -1,7 +1,7 @@
 % Collate .mat files created by Process_ACCESS_CM2.m
 
 base = '/scratch/e14/rmh561/access-cm2/HCvar/';
-name = 'PIcontrol';
+name = 'PIcontrol_SH';
 
 files = dir([base 'CM2_' name '_*.mat']);
 
@@ -9,10 +9,8 @@ files = dir([base 'CM2_' name '_*.mat']);
 nums = [];
 for fi=1:length(files)
     fname = files(fi).name;
-    if (length(fname)==26)
-        num = str2num(fname(15:22));
-        nums = cat(1,nums,num);
-    end
+    num = str2num(fname(end-11:end-4));
+    nums = cat(1,nums,num);
 end
 
 nums = sort(nums);
