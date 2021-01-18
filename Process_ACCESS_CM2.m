@@ -82,11 +82,10 @@ SST = squeeze(temp(:,:,1,:));
 %%%% Temperature anomalies in y-z:
 
 if (Tyz)
-    Tyz.V = squeeze(nansum(V,3));
-    Tyz.H = squeeze(nansum(H,3));
+    TyzS.V = squeeze(nansum(V,1));
+    TyzS.H = squeeze(nansum(H,1));
     onameyz = [oname(1:end-4) '_Tyz.mat'];
-    save(onameyz,'Tyz');
-    
+    save(onameyz,'TyzS');
 else
 %%%% Heat and volume:
 

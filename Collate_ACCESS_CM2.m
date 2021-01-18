@@ -1,7 +1,10 @@
 % Collate .mat files created by Process_ACCESS_CM2.m
 
 base = '/scratch/e14/rmh561/access-cm2/HCvar/';
-name = 'PIcontrol_SH';
+name = 'PIcontrol_';
+Tyz = 1;
+
+if (~Tyz)
 
 files = dir([base 'CM2_' name '_*.mat']);
 
@@ -54,8 +57,36 @@ clear next files CINfields Tvfields Yvfields Zvfields fname ...
 
 save([base 'CM2_' name '_ALL.mat']);
 
+else
 
-    
+files = dir([base 'CM2_' name '_*_Tyz.mat']);
 
+% Fix order:
+nums = [];
+for fi=1:length(files)
+    fname = files(fi).name;
+    num = str2num(fname(end-15:end-8));
+    nums = cat(1,nums,num);
+end
 
+nums = sort(nums);
+ 
+% Tyz collate:
+load(sprintf([base 'CM2_' name '_%08d_Tyz.mat'],nums(1)));
+Tyzfields = fieldnames(TyzS);
 
+for fi = 2:length(nums)
+    fname = sprintf([base 'CM2_' name '_%08d_Tyz.mat'],nums(fi))
+    next = load(fname);
+
+    for vi = 1:length(Tyzfields)
+        eval(['TyzS.' Tyzfields{vi} ' = cat(3,TyzS.' Tyzfields{vi} ...
+              ',next.TyzS.' Tyzfields{vi} ');']);
+    end
+end
+
+clear next files Tyzfields fname fi vi;
+
+save([base 'CM2_' name '_Tyz_ALL.mat']);
+
+end

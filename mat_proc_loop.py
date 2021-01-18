@@ -24,9 +24,9 @@ dates = sorted(dates,key=lambda x: int(x))
 # Mask:
 msk = ''
 
-# Split into sets of 300 runs (ss is 0,1,2 or 3):
-ss = 0
-dates = dates[ss*300:ss*300+300]
+# Split into sets of 600 runs (ss is 0,1,2 or 3):
+ss = 1
+dates = dates[ss*600:ss*600+600]
 
 # dates = dates[:3]
 
