@@ -886,7 +886,7 @@ nw = 10;
 [pxx,f] = pmtm(ZvP.Tp(15,:)',nw,[],fs);
 fL = length(f);
 
-TorH = 0;
+TorH = 1;
 
 if (TorH)
 vars = {'Tp','Tp','TENp','ADVp','FORp','RMIXp','VMIXp'};
@@ -924,21 +924,29 @@ poss = [0.07    0.55    0.42    0.4; ...
         0.07    0.08    0.42    0.4; ...
         0.55     0.08    0.42    0.4];
 
+pranges = [10 40;
+           10 40;
+           0 40;]
+prangesi = pranges;
+for pi=1:length(pranges(:))
+    [tmp prangesi(pi)] = min(abs(P-pranges(pi)));
+end
+
 % Spectral average all terms:
 figure;
 set(gcf,'Position',[1 1 1213.3*2 614.7*2]);
 subplot(2,2,1);
 if (TorH)
-plot(f,log10(mean(ZvP.Tp_spec,2)),'-k','linewidth',2);
+plot(f,log10(mean(ZvP.Tp_spec(:,prangesi(1,1):prangesi(1,2)),2)),'-k','linewidth',2);
 hold on;
-plot(f,log10(mean(TvP.Tp_spec,2)),'-r','linewidth',2);
-plot(f,log10(mean(YvP.Tp_spec,2)),'-b','linewidth',2);
+plot(f,log10(mean(TvP.Tp_spec(:,prangesi(2,1):prangesi(2,2)),2)),'-r','linewidth',2);
+plot(f,log10(mean(YvP.Tp_spec(:,prangesi(3,1):prangesi(3,2)),2)),'-b','linewidth',2);
 ylim([-5 -2]);
 else
-plot(f,log10(mean(ZvP.Hp_spec,2)),'-k','linewidth',2);
+plot(f,log10(mean(ZvP.Hp_spec(:,prangesi(1,1):prangesi(1,2)),2)),'-k','linewidth',2);
 hold on;
-plot(f,log10(mean(TvP.Hp_spec,2)),'-r','linewidth',2);
-plot(f,log10(mean(YvP.Hp_spec,2)),'-b','linewidth',2);
+plot(f,log10(mean(TvP.Hp_spec(:,prangesi(2,1):prangesi(2,2)),2)),'-r','linewidth',2);
+plot(f,log10(mean(YvP.Hp_spec(:,prangesi(3,1):prangesi(3,2)),2)),'-b','linewidth',2);
 end
 xlim([1/250 1]);
 xlab = [300 100 50 10 7 5 3 2 1];
@@ -966,11 +974,11 @@ for ti=1:length(typs)
     else
         eval(['var = ' typs{ti} 'vP.Hpd_spec;']);
     end
-    plot(f,log10(mean(var,2)),'--','linewidth',2,'color','m');
+    plot(f,log10(mean(var(:,prangesi(ti,1):prangesi(ti,2)),2)),'--','linewidth',2,'color','m');
     hold on;
     for vi=3:length(vars)
         eval(['var = ' typs{ti} 'vP.' vars{vi} 'd_spec;']);
-        plot(f,log10(mean(var,2)),'-','linewidth',2,'color',colors{vi-2});
+        plot(f,log10(mean(var(:,prangesi(ti,1):prangesi(ti,2)),2)),'-','linewidth',2,'color',colors{vi-2});
         hold on;
     end
 xlim([1/250 1]);    
@@ -1415,7 +1423,7 @@ figure;
 subplot(2,2,1);
 pcolPlot(X,Y,Tzcc);
 hold on;
-contour(X,Y,Tzcc,[-0.5 0.5],'-k');
+contour(X,Y,Tzcc,[-0.4 0.4],'-k');
 xlabel('Temperature Percentile');
 ylabel('Depth Percentile');
 caxis([-1 1]);
@@ -1423,7 +1431,7 @@ colorbar;
 subplot(2,2,2);
 pcolPlot(X,Y,Tycc);
 hold on;
-contour(X,Y,Tycc,[-0.5 0.5],'-k');
+contour(X,Y,Tycc,[-0.4 0.4],'-k');
 xlabel('Temperature Percentile');
 ylabel('Latitude Percentile');
 colorbar;
@@ -1431,15 +1439,116 @@ caxis([-1 1]);
 subplot(2,2,3);
 pcolPlot(X,Y,zycc);
 hold on;
-contour(X,Y,zycc,[-0.5 0.5],'-k');
+contour(X,Y,zycc,[-0.4 0.4],'-k');
 xlabel('Depth Percentile');
 ylabel('Latitude Percentile');
 colorbar;
 caxis([-1 1]);
 colormap('redblue');
 
-    
-    
+%%% Tyz plotting:
+
+% Regressions:
+ts = CIN.N34;
+label = 'ENSO';
+
+[tmp ind] = min(abs(P-20));
+ts = ZvP.Tp(ind,:)';
+
+ts = mean(ZvP.Tp(10:30,:),1)';
+ts = mean(TvP.Tp(90:100,:),1)';
+ts = filter_field(CIN.AMOC,121,'-t');
+ts(isnan(ts)) = 0;
+
+Tyz_reg = reshape(reshape(Tyz,[yL*zL tL])*ts/(sum(ts.^2)),[yL zL]);
+
+figure;
+[X,Y] = ndgrid(latv,Z);
+subplot(2,2,1);
+pcolPlot(X,Y,Tyz_reg);
+set(gca,'ydir','reverse');
+ylim([0 4000]);
+caxis([-1 1]);%-0.5 0.5]);
+colormap('redblue');
+
+% Time-average:
+
+[tmp t1] = min(abs(time-225));
+[tmp t2] = min(abs(time-275));
+
+figure;
+[X,Y] = ndgrid(latv,Z);
+pcolPlot(X,Y,mean(Tyz(:,:,t1:t2),3));
+set(gca,'ydir','reverse');
+ylim([0 4000]);
+% $$$ caxis([-0.3 0.3]);%-0.5 0.5]);
+colormap('redblue');
+
+% Nice decadal plot:
+figure;
+set(gcf,'Position',[1          36        1920         970]);
+set(gcf,'defaulttextfontsize',15);
+set(gcf,'defaultaxesfontsize',15);
+ts1 = mean(ZvP.Tp(10:30,:),1)';
+ts2 = mean(TvP.Tp(10:30,:),1)';
+ts1 = filter_field(ts1,12*25+1,'-t');
+ts1(isnan(ts1)) = 0;
+ts2 = filter_field(ts2,12*25+1,'-t');
+ts2(isnan(ts2)) = 0;
+subplot(5,1,1);
+plot(time,ts1,'-k');
+hold on;
+plot(time,ts2,'-r');
+legend('$\overline{\Theta_z(10\%<p_z<30\%,t)}$','$\overline{\Theta_\Theta(10\%<p_\Theta<30\%,t)}$');
+hold on;
+plot([225 225],[-0.02 0.02],'--k');
+plot([275 275],[-0.02 0.02],'--k');
+xlim([50 600]);
+ylim([-0.03 0.03]);
+set(gca,'Position',[0.1300    0.8172    0.7058    0.1672]);
+xlabel('Year');
+ylabel('$\Theta$ Anomaly $(^\circ$C)');
+
+Tyz_reg = reshape(reshape(Tyz,[yL*zL tL])*ts1/(sum(ts1.^2)),[yL zL]);
+[X,Y] = ndgrid(latv,Z);
+
+subplot(5,1,[2 3]);
+contourf(X,Y,Tyz_reg,[-1e50 -0.8e22:0.025e22:0.8e22 1e50],'linestyle','none');
+hold on;
+[c,h] = contour(X,Y,Tyz_mean,[-2:2:40],'-k');
+clabel(c,h);
+caxis([-0.8 0.8]*1e22);
+cb = colorbar;
+ylabel(cb,'J/m/$^\circ$-latitude/$^\circ$C');
+set(gca,'ydir','reverse');
+% $$$ xlabel('Latitude ($^\circ$N)');
+ylabel('Depth (m)');
+ylim([0 4000]);
+xlim([-80 70]);
+
+[tmp t1] = min(abs(time-225));
+[tmp t2] = min(abs(time-275));
+
+subplot(5,1,[4 5]);
+contourf(X,Y,mean(Tyz(:,:,t1:t2),3),[-1e50 -1e20:0.025e20:1e20 1e50],'linestyle','none');
+hold on;
+[c,h] = contour(X,Y,Tyz_mean,[-2:2:40],'-k');
+clabel(c,h);
+caxis([-0.1 0.1]*1e21);
+cb = colorbar;
+ylabel(cb,'J/m/$^\circ$-latitude');
+set(gca,'ydir','reverse');
+xlabel('Latitude ($^\circ$N)');
+ylabel('Depth (m)');
+ylim([0 4000]);
+xlim([-80 70]);
+colormap('redblue');
+
+
+
+
+
+
 % $$$     %%%% Plot Regressions:
 % $$$     
 % $$$     % ENSO:

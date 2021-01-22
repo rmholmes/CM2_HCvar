@@ -1,9 +1,15 @@
 % Post-processing for HC variability project
 
 clear all;
+baseMAT = '/srv/ccrc/data03/z3500785/access-cm2/';
 PI_or_his = 1; % 1 = PI-control, 0 = historical simualtion
+
+% Streamline post-processing:
+doBUDGET = 1;
+doTyz = 1;
+
 if (PI_or_his)
-    load('CM2_PIcontrol_ALL.mat');
+    load([baseMAT 'CM2_PIcontrol_ALL.mat']);
 % $$$     load('CM2_PIcontrol_SH_ALL.mat');
 else
     load('CM2_historical_ALL.mat');
@@ -47,6 +53,7 @@ vars = {'temp_submeso', 'temp_vdiffuse_diff_cbt', 'temp_nonlocal_KPP', ...
         'temp_vdiffuse_sbc','frazil_3d','sw_heat','temp_rivermix', ...
         'neutral_diffusion_temp','neutral_gm_temp', 'temp_vdiffuse_k33', 'mixdownslope_temp', ...
         'temp_sigma_diff','sfc_hflux_pme','temp_eta_smooth'};    
+if (doBUDGET)
 for ty = 1:length(typs)
     eval([typs{ty} 'v.temp_advection = ' typs{ty} 'v.temp_tendency;']);
     for vi=1:length(vars)
@@ -68,6 +75,9 @@ for vi = 1:length(typs)
     eval([typs{vi} 'v.VMIX = ' typs{vi} 'v.temp_vdiffuse_diff_cbt+' typs{vi} 'v.temp_nonlocal_KPP;']);
 end
 vars = {vars{:},'temp_tendency','temp_advection'};
+else
+    vars = {vars{:},'temp_tendency','pme_river'};
+end
 for vi =1:length(vars)
     eval(['Tv = rmfield(Tv,''' vars{vi} ''');']);
     eval(['Yv = rmfield(Yv,''' vars{vi} ''');']);
@@ -171,6 +181,7 @@ OHC = squeeze(Zv.H_c(end,:))';
         TvP.Tap(1,ti) = Te(end);
         ZvP.Tp(:,ti) = interp1(Zv.P(:,ti)+(1:zL+1)'/1e10,Zv.Te(:,ti),P,'linear');
         YvP.Tp(:,ti) = interp1(Yv.P(:,ti)+(1:yL+1)'/1e10,Yv.Te(:,ti),P,'linear');
+        if (doBUDGET)
         for vi=1:length(bvars)
             eval(['ZvP.' bvars{vi} '(:,ti) = interp1(Zv.P(:,ti)+(1:zL+1)''/1e10,Zv.' bvars{vi} '(:,ti),Pe,''linear'');']);
             eval(['YvP.' bvars{vi} '(:,ti) = interp1(Yv.P(:,ti)+(1:yL+1)''/1e10,Yv.' bvars{vi} '(:,ti),Pe,''linear'');']);
@@ -178,6 +189,7 @@ OHC = squeeze(Zv.H_c(end,:))';
             eval(['ZvP.' bvars{vi} '(1,ti) = 0;']);eval(['ZvP.' bvars{vi} '(end,ti) = Zv.' bvars{vi} '(end,ti);']);
             eval(['TvP.' bvars{vi} '(1,ti) = 0;']);eval(['TvP.' bvars{vi} '(end,ti) = Tv.' bvars{vi} '(1,ti);']);
             eval(['YvP.' bvars{vi} '(1,ti) = 0;']);eval(['YvP.' bvars{vi} '(end,ti) = Yv.' bvars{vi} '(end,ti);']);
+        end
         end
     end
     
@@ -238,7 +250,7 @@ OHC = squeeze(Zv.H_c(end,:))';
                                                     % go with depth-volume
     yofP_mean = interp1(mean(Yv.P,2)+(1:yL+1)'/1e10,latv_edges,P,'linear'); % Depth axis to
                                                     % go with depth-volume
-
+    if (doBUDGET)
     % Time-integrate budget terms:
     for ti =1:length(typs)
         for vi=1:length(bvars)
@@ -246,6 +258,7 @@ OHC = squeeze(Zv.H_c(end,:))';
                   'vP.' bvars{vi} '.*repmat(DT_A'',[PL+1 1]),2);']);
         end
     end    
+    end
     
     % Construct climatology and make years even:
     if (PI_or_his)
@@ -411,6 +424,7 @@ OHC = squeeze(Zv.H_c(end,:))';
     YvP.Hp = rho0*Cp*cumsum(YvP.Tp,1)*dP/100.*repmat(Vtot',[PL 1]);
     
     % Calculate tendency term contributions to temperature:
+    if (doBUDGET)
     for ti =1:length(typs)
         for vi = 1:length(bvars)
             tn = typs{ti};
@@ -422,6 +436,7 @@ OHC = squeeze(Zv.H_c(end,:))';
                                 'Cp/dP*100./repmat(Vtot_clim'',[PL ' ...
                   '1]);']);
         end
+    end
     end
     
     % Calc GMSST:
@@ -451,3 +466,40 @@ OHC = squeeze(Zv.H_c(end,:))';
 % $$$         load('PIstd.mat');
 % $$$     end
 
+    % Tyz processing:
+    if (doTyz)
+        
+% $$$         % Pre-process Tyz and Hyz:
+% $$$         load([baseMAT 'CM2_PIcontrol__Tyz_ALL.mat']);
+% $$$         Tyz = TyzS.H/TyzS.V/rho0/Cp;
+% $$$         save([baseMAT 'CM2_PIcontrol__Tyz_ALL_TyzONLY.mat'],'Tyz');
+% $$$         % Time-mean for plotting:
+% $$$         Tyz_mean = mean(Tyz,3);
+% $$$ 
+% $$$         load([baseMAT 'CM2_PIcontrol__Tyz_ALL.mat']);
+% $$$         Ayz = ndgrid(diff(latv_edges),diff(Ze));
+% $$$         Tyz = TyzS.H./repmat(Ayz,[1 1 length(TyzS.H(1,1,:))]);
+% $$$         save([baseMAT 'CM2_PIcontrol__Tyz_ALL_HyzONLY.mat'],'Tyz');
+                
+        % Load:
+        load([baseMAT 'CM2_PIcontrol__Tyz_ALL_HyzONLY.mat']);
+        ti = yr1*12+1; % starting month
+        Tyz = Tyz(:,:,ti:(ti+tL-1));
+        
+        
+        % Detrend:
+        [Tyz_cub,Tyz_cubtr] = cubfit(time,reshape(Tyz,[yL*zL tL])');
+        Tyz_cub = reshape(Tyz_cub',[yL zL tL]);
+        Tyz_cubtr = reshape(Tyz_cubtr',[yL zL 4]);
+        Tyz = Tyz-Tyz_cub;
+        
+        % Deseason:
+        Tyz_clim = zeros(yL,zL,12);
+        for mi=1:12
+            Tyz_clim(:,:,mi) = mean(Tyz(:,:,mi:12:end),3);
+        end
+        Tyz = Tyz - repmat(Tyz_clim,[1 1 nyrs]);
+        
+    end
+    
+    
