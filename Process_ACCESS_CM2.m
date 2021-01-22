@@ -8,7 +8,7 @@
 % Choices:
 dT = 0.2; % temperature grid size.
 
-Tyz = 1; % Only do T(y,z).
+Tyz = 0; % Only do T(y,z).
 
 %%%% Grid (time-constant) and time info:
 

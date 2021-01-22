@@ -1,8 +1,8 @@
 % Collate .mat files created by Process_ACCESS_CM2.m
 
 base = '/scratch/e14/rmh561/access-cm2/HCvar/';
-name = 'PIcontrol_';
-Tyz = 1;
+name = 'hisNATe3_';
+Tyz = 0;
 
 if (~Tyz)
 
