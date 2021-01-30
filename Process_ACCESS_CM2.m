@@ -8,7 +8,7 @@
 % Choices:
 dT = 0.2; % temperature grid size.
 
-Tyz = 1; % Only do T(y,z).
+Tyz = 0; % Only do T(y,z).
 
 %%%% Grid (time-constant) and time info:
 
@@ -82,11 +82,10 @@ SST = squeeze(temp(:,:,1,:));
 %%%% Temperature anomalies in y-z:
 
 if (Tyz)
-    Tyz.V = squeeze(nansum(V,3));
-    Tyz.H = squeeze(nansum(H,3));
+    TyzS.V = squeeze(nansum(V,1));
+    TyzS.H = squeeze(nansum(H,1));
     onameyz = [oname(1:end-4) '_Tyz.mat'];
-    save(onameyz,'Tyz');
-    
+    save(onameyz,'TyzS');
 else
 %%%% Heat and volume:
 
