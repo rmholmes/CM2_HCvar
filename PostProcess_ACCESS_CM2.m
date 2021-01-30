@@ -1,19 +1,45 @@
 % Post-processing for HC variability project
 
+%%%%%% OPTIONS %%%
 clear all;
 baseMAT = '/srv/ccrc/data03/z3500785/access-cm2/';
-PI_or_his = 1; % 1 = PI-control, 0 = historical simualtion
+
+PI_or_his = 1;
+% 1 = PI-control, 0 = historical simualtion,
+% 2 = hisNAT e1, 3 = hisNAT e2, 4 = hisNAT e3
+% 5 = hisAER e1, 6 = hisGHG e1
 
 % Streamline post-processing:
-doBUDGET = 1;
-doTyz = 1;
+doBUDGET = 0;
+doTyz = 0;
 
-if (PI_or_his)
+if (PI_or_his == 1)
     load([baseMAT 'CM2_PIcontrol_ALL.mat']);
 % $$$     load('CM2_PIcontrol_SH_ALL.mat');
-else
-    load('CM2_historical_ALL.mat');
+    saveNAME = 'PIcontrolPP.mat';
+elseif (PI_or_his == 0)
+    load([baseMAT 'CM2_his__ALL.mat']);
+    saveNAME = 'hisPP.mat';
+elseif (PI_or_his == 2)
+    load([baseMAT 'CM2_hisNATe1__ALL.mat']);
+    saveNAME = 'hisNATe1PP.mat';
+elseif (PI_or_his == 3)
+    load([baseMAT 'CM2_hisNATe2__ALL.mat']);
+    saveNAME = 'hisNATe2PP.mat';
+elseif (PI_or_his == 4)
+    load([baseMAT 'CM2_hisNATe3__ALL.mat']);
+    saveNAME = 'hisNATe3PP.mat';
+elseif (PI_or_his == 5)
+    load([baseMAT 'CM2_hisAERe1__ALL.mat']);
+    saveNAME = 'hisAERe1PP.mat';
+elseif (PI_or_his == 6)
+    load([baseMAT 'CM2_hisGHGe1__ALL.mat']);
+    saveNAME = 'hisGHGe1PP.mat';
 end
+
+saveMAT = 1;
+
+%%%%%%
 
 % Define a new percentile grid:
 dP = 1;%0.25;
@@ -25,27 +51,27 @@ PL = length(P);
 tL = length(time);
 time = time/365.25; % time in years
 
-% Coarse grain temperature bins (assumes linear):
-n = 1; % Coarse grain factor
-TLn = floor(TL/n);
-TLr = mod(TL,n);
-convm = zeros(TL,TLn);
-cnt = 1;
-for i=1:TLn
-    convm(cnt:(cnt+n-1),i) = 1;
-    cnt = cnt+n;
-end
-if (TLr>0)
-    convm((end-TLr+1):end,end) = 1;
-end
-dT = n*dT;
-Te = -3:dT:(-3+TLn*dT);
-T = (Te(2:end)+Te(1:end-1))/2;
-TL = length(T);
-fns = fieldnames(Tv);
-for vi=1:length(fns)
-    eval(['Tv.' fns{vi} ' = (Tv.' fns{vi} '''*convm)'';']);
-end
+% $$$ % Coarse grain temperature bins (assumes linear):
+% $$$ n = 1; % Coarse grain factor
+% $$$ TLn = floor(TL/n);
+% $$$ TLr = mod(TL,n);
+% $$$ convm = zeros(TL,TLn);
+% $$$ cnt = 1;
+% $$$ for i=1:TLn
+% $$$     convm(cnt:(cnt+n-1),i) = 1;
+% $$$     cnt = cnt+n;
+% $$$ end
+% $$$ if (TLr>0)
+% $$$     convm((end-TLr+1):end,end) = 1;
+% $$$ end
+% $$$ dT = n*dT;
+% $$$ Te = -3:dT:(-3+TLn*dT);
+% $$$ T = (Te(2:end)+Te(1:end-1))/2;
+% $$$ TL = length(T);
+% $$$ fns = fieldnames(Tv);
+% $$$ for vi=1:length(fns)
+% $$$     eval(['Tv.' fns{vi} ' = (Tv.' fns{vi} '''*convm)'';']);
+% $$$ end
 
 % Fix advection budget term by residual:
 typs = {'T','Z','Y'};
@@ -261,7 +287,7 @@ OHC = squeeze(Zv.H_c(end,:))';
     end
     
     % Construct climatology and make years even:
-    if (PI_or_his)
+    if (PI_or_his == 1)
         yr1 =50; % initial years to throw out
 % $$$         yr1 =0;
     else
@@ -290,12 +316,15 @@ OHC = squeeze(Zv.H_c(end,:))';
     Vtot = Vtot(ti:(ti+tL-1));
     CIN.AMOCfull = CIN.AMOC;
     OHCfull = OHC;
-        
+ 
+    %%% De-drifing:
+    
     % Calculate cubic drift trend and subtract:
     fnames = fieldnames(TvP);
     ZvP.Tap = TvP.Tap;
     YvP.Tap = TvP.Tap; % for convience -> delete after...
-    if (PI_or_his)
+
+    if (PI_or_his == 1) % Calculate cubic drift from PI-control
         
     for ti = 1:length(typs)
         for vi = 1:length(fnames)
@@ -310,7 +339,7 @@ OHC = squeeze(Zv.H_c(end,:))';
             eval([tn 'vP.' vn '_cub = zeros(tL,lg);']);
             eval([tn 'vP.' vn '_cubtr = zeros(4,lg);']);
             for pi=1:lg
-                eval(['[' tn 'vP.' vn '_cub(:,pi),' tn 'vP.' tn ...
+                eval(['[' tn 'vP.' vn '_cub(:,pi),' tn 'vP.' vn ...
                       '_cubtr(:,pi)] = cubfit(time,' tn 'vP.' vn ...
                       '(pi,:)'');']);
             end
@@ -323,56 +352,104 @@ OHC = squeeze(Zv.H_c(end,:))';
     end
     [OHC_cub,OHC_cubtr] = cubfit(time,OHC);
     OHC = OHC-OHC_cub;
-    
-% $$$     PI.ZvP.Tp_cubtr = ZvP.Tp_cubtr;
-% $$$     PI.TvP.Tp_cubtr = TvP.Tp_cubtr;
-% $$$     PI.YvP.Tp_cubtr = YvP.Tp_cubtr;
-% $$$     PI.time = time;
-% $$$     PI.OHCfull = OHCfull;
-% $$$     PI.OHC = OHC;
-% $$$     PI.OHC_cubtr = OHC_cubtr;
-% $$$     PI.TvP.Tp_mean = TvP.Tp_mean;
-% $$$     PI.YvP.Tp_mean = YvP.Tp_mean;
-% $$$     PI.ZvP.Tp_mean = ZvP.Tp_mean;
-% $$$     save('PIcubicFit.mat','PI');
 
-    else
-        ' NOT ADJUSTED YET!'
-% $$$         Itime = -100;
-% $$$         load('PIcubicFit.mat');
-% $$$         TvP.Tp_mean = PI.TvP.Tp_mean;
-% $$$         YvP.Tp_mean = PI.YvP.Tp_mean;
-% $$$         ZvP.Tp_mean = PI.ZvP.Tp_mean;
-% $$$ 
-% $$$         TvP.Tp_cub = zeros(tL,PL);
-% $$$         TvP.Tap_cub = zeros(tL,PL);
-% $$$         ZvP.Tp_cub = zeros(tL,PL);
-% $$$         YvP.Tp_cub = zeros(tL,PL);
-% $$$         
-% $$$         t = time-Itime;
-% $$$         t2 = (time-Itime).^2;
-% $$$         t3 = (time-Itime).^3;
-% $$$         
-% $$$         for pi = 1:PL
-% $$$             TvP.Tp_cub(:,pi) = PI.TvP.Tp_cubtr(1,pi)+PI.TvP.Tp_cubtr(2,pi).*t ...
-% $$$                           + PI.TvP.Tp_cubtr(3,pi).*t2 + PI.TvP.Tp_cubtr(4,pi).*t3;
-% $$$             YvP.Tp_cub(:,pi) = PI.YvP.Tp_cubtr(1,pi)+PI.YvP.Tp_cubtr(2,pi).*t ...
-% $$$                           + PI.YvP.Tp_cubtr(3,pi).*t2 + PI.YvP.Tp_cubtr(4,pi).*t3;
-% $$$             ZvP.Tp_cub(:,pi) = PI.ZvP.Tp_cubtr(1,pi)+PI.ZvP.Tp_cubtr(2,pi).*t ...
-% $$$                           + PI.ZvP.Tp_cubtr(3,pi).*t2 + PI.ZvP.Tp_cubtr(4,pi).*t3;
-% $$$         end
-% $$$         OHC_cub = PI.OHC_cubtr(1)+PI.OHC_cubtr(2).*t + ...
-% $$$                   PI.OHC_cubtr(3).*t2 + PI.OHC_cubtr(4).*t3;
-% $$$     
-% $$$         % subtract cubear trend:
-% $$$         TvP.Tp = TvP.Tp-TvP.Tp_cub';
-% $$$         ZvP.Tp = ZvP.Tp-ZvP.Tp_cub';
-% $$$         YvP.Tp = YvP.Tp-YvP.Tp_cub';
-% $$$         OHC = OHC-OHC_cub;
-% $$$         
-% $$$         % Set date:
-% $$$         time = time+1850;
-% $$$         yr1 = 1850;
+    else 
+
+        % Use PI-control cubic drift for de-drifting
+        
+        Itime = -100;
+        t = time-Itime;
+        t2 = (time-Itime).^2;
+        t3 = (time-Itime).^3;
+        
+        PIcont = load([baseMAT 'PIcontrolPP.mat'],'ZvP','TvP','YvP','OHC_cubtr','time');
+        
+        for ti = 1:length(typs)
+            for vi = 1:length(fnames)
+                tn = typs{ti};
+                vn = fnames{vi};
+
+                % Mean (from PI control):
+                eval([tn 'vP.' vn '_mean = PIcont.' tn 'vP.' vn '_mean;']);
+            
+                % Calculate cubic trend:
+                eval(['lg = length(' tn 'vP.' vn '(:,1));']);
+                eval([tn 'vP.' vn '_cub = zeros(tL,lg);']);
+                for pi=1:lg
+                    eval([tn 'vP.' vn '_cub(:,pi) = PIcont.' ...
+                          tn 'vP.' vn '_cubtr(1,pi) + PIcont.' ...
+                          tn 'vP.' vn '_cubtr(2,pi).*t + PIcont.' ...
+                          tn 'vP.' vn '_cubtr(3,pi).*t2 + PIcont.' ...
+                          tn 'vP.' vn '_cubtr(4,pi).*t3;']);
+                end
+                eval([tn 'vP.' vn '_cub = ' tn 'vP.' vn '_cub'';']);
+            
+                % subtract cubic trend:
+                eval([tn 'vP.' vn ' = ' tn 'vP.' vn '-' tn 'vP.' vn '_cub;']);
+            
+            end
+        end
+        OHC_cub = PIcont.OHC_cubtr(1)+PIcont.OHC_cubtr(2).*t + ...
+                  PIcont.OHC_cubtr(3).*t2 + PIcont.OHC_cubtr(4).*t3;
+        OHC = OHC-OHC_cub;
+        OHCcubdd = OHC;
+        TIMESERIES = {TIMESERIES{:},'OHCcubdd'};
+
+        % Set date:
+        time = time+1850;
+        yr1 = 1850;
+        
+        % Dedrift with linear fit to historical e1:
+        if (PI_or_his == 2)
+            for ti = 1:length(typs)
+                for vi = 1:length(fnames)
+                    tn = typs{ti};
+                    vn = fnames{vi};
+
+                    % Calculate linear trend:
+                    eval(['lg = length(' tn 'vP.' vn '(:,1));']);
+                    eval([tn 'vP.' vn '_lin = zeros(tL,lg);']);
+                    eval([tn 'vP.' vn '_lintr = zeros(2,lg);']);
+                    for pi=1:lg
+                        eval(['[' tn 'vP.' vn '_lin(:,pi),' tn 'vP.' vn ...
+                              '_lintr(:,pi)] = linfit(time,' tn 'vP.' vn ...
+                              '(pi,:)'');']);
+                    end
+                    eval([tn 'vP.' vn '_lin = ' tn 'vP.' vn '_lin'';']);
+            
+                    % subtract linear trend:
+                    eval([tn 'vP.' vn ' = ' tn 'vP.' vn '-' tn 'vP.' vn '_lin;']);
+            
+                end
+            end
+            [OHC_lin,OHC_lintr] = linfit(time,OHC);
+            OHC = OHC-OHC_lin;
+        elseif (PI_or_his == 0)
+            hisNATe1 = load([baseMAT 'hisNATe1PP.mat'],'ZvP','TvP','YvP','OHC_lintr','time');
+        
+            for ti = 1:length(typs)
+                for vi = 1:length(fnames)
+                    tn = typs{ti};
+                    vn = fnames{vi};
+
+                    % Calculate linear trend:
+                    eval(['lg = length(' tn 'vP.' vn '(:,1));']);
+                    eval([tn 'vP.' vn '_lin = zeros(tL,lg);']);
+                    for pi=1:lg
+                        eval([tn 'vP.' vn '_lin(:,pi) = hisNATe1.' ...
+                              tn 'vP.' vn '_lintr(1,pi) + hisNATe1.' ...
+                              tn 'vP.' vn '_lintr(2,pi).*time;']);
+                    end
+                    eval([tn 'vP.' vn '_lin = ' tn 'vP.' vn '_lin'';']);
+            
+                    % subtract cubic trend:
+                    eval([tn 'vP.' vn ' = ' tn 'vP.' vn '-' tn 'vP.' vn '_lin;']);
+            
+                end
+            end
+            OHC_lin = hisNATe1.OHC_lintr(1)+hisNATe1.OHC_lintr(2).*time;
+            OHC = OHC-OHC_lin;
+        end
     end
         
     for vi=1:length(TIMESERIES)
@@ -381,6 +458,9 @@ OHC = squeeze(Zv.H_c(end,:))';
             eval([TIMESERIES{vi} '_clim(mi) = mean(' TIMESERIES{vi} ...
                   '(mi:12:end));']);
         end
+        eval([TIMESERIES{vi} '_clim = ' TIMESERIES{vi} '_clim - mean(' ...
+              TIMESERIES{vi} '_clim);']);
+        
         eval([TIMESERIES{vi} ' = ' TIMESERIES{vi} ...
               ' - repmat(' TIMESERIES{vi} '_clim,[nyrs 1]);']);
     end
@@ -412,11 +492,6 @@ OHC = squeeze(Zv.H_c(end,:))';
     for mi=1:12
         Vtot_clim(mi) = mean(Vtot(mi:12:end));
     end
-        
-% $$$     if (PI_or_his)
-% $$$         PI.OHC = OHC;
-% $$$         save('PIcubicFit.mat','PI');
-% $$$     end
     
     % Calculate cumulative integral OHC (overwrite total - just anomalies now):
     TvP.Hp = rho0*Cp*cumsum(TvP.Tp,1)*dP/100.*repmat(Vtot',[PL 1]);
@@ -454,17 +529,6 @@ OHC = squeeze(Zv.H_c(end,:))';
     ZvP.mean = zofP_mean;
     TvP.mean = TvP.Tp_mean;
     YvP.mean = yofP_mean;
-    
-% $$$     % Calculate quantities for Time Of Emergence:
-% $$$     if (PI_or_his)
-% $$$     PIstd.stdZvP.Tp = std(ZvP.Tp,[],2);
-% $$$     PIstd.stdTvP.Tp = std(TvP.Tp,[],2);
-% $$$     PIstd.stdYvP.Tp = std(YvP.Tp,[],2);
-% $$$     PIstd.stdOHC = std(OHC,[],1);
-% $$$     save('PIstd.mat','PIstd');
-% $$$     else
-% $$$         load('PIstd.mat');
-% $$$     end
 
     % Tyz processing:
     if (doTyz)
@@ -484,8 +548,7 @@ OHC = squeeze(Zv.H_c(end,:))';
         % Load:
         load([baseMAT 'CM2_PIcontrol__Tyz_ALL_HyzONLY.mat']);
         ti = yr1*12+1; % starting month
-        Tyz = Tyz(:,:,ti:(ti+tL-1));
-        
+        Tyz = Tyz(:,:,ti:(ti+tL-1));     
         
         % Detrend:
         [Tyz_cub,Tyz_cubtr] = cubfit(time,reshape(Tyz,[yL*zL tL])');
@@ -503,3 +566,8 @@ OHC = squeeze(Zv.H_c(end,:))';
     end
     
     
+if (saveMAT)
+    save([baseMAT saveNAME]);
+
+end
+

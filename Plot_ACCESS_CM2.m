@@ -1,7 +1,12 @@
 %%%% Plotting scripts for HC variability project
 
+% Load specific experiments:
+clear all;
+baseMAT = '/srv/ccrc/data03/z3500785/access-cm2/';
+load([baseMAT 'PIcontrolPP.mat']);
+
 %%% Percentile converter:
-Ps = [5 10 50 95];
+Ps = [5 10 12 20 25 50 75 95];
 for pi=1:length(Ps)
     [tmp pii] = min(abs(P-Ps(pi)));
     sprintf(['Percentile %3.1f is %5.1fm, %3.1fC, %3.1f degrees ' ...
@@ -61,39 +66,94 @@ xlabel('Year');
 ylabel('Total Wind Power (W)');
 xlim([yr1 yr1+nyrs]);
 
-%%% Time of emergence/historical OHC:
+%%% Historical OHC:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-figure;
-plot(time,OHC,'-k');
-hold on;
+his = load([baseMAT 'hisPP.mat']);
+PI = load([baseMAT 'PIcontrolPP.mat']);
+hisNATe1 = load([baseMAT 'hisNATe1PP.mat']);
+hisAERe1 = load([baseMAT 'hisAERe1PP.mat']);
+hisGHGe1 = load([baseMAT 'hisGHGe1PP.mat']);
+% $$$ hisNATe2 = load([baseMAT 'hisNATe2PP.mat']);
+% $$$ hisNATe3 = load([baseMAT 'hisNATe3PP.mat']);
 
-plot([50 600],[1 1]*2*PIstd.stdOHC,'--k');
-plot([50 600],[1 1]*-2*PIstd.stdOHC,'--k');
+% Raw OHC:
+figure;
+set(gcf,'defaulttextfontsize',15);
+set(gcf,'defaultaxesfontsize',15);
+subplot(3,1,1);
+plot(PI.time+1850-100,PI.OHCfull,'-k');
+hold on;
+plot(PI.time+1850-100,PI.OHC_cub,'-g');
+plot(his.time,his.OHCfull,'-b');
+plot(hisNATe1.time,hisNATe1.OHCfull,'-r');
+plot(hisAERe1.time,hisAERe1.OHCfull,'-m');
+plot(hisGHGe1.time,hisGHGe1.OHCfull,'-c');
+% $$$ plot(hisNATe2.time,hisNATe2.OHCfull,'-','color',[0 0.5 0]);
+% $$$ plot(hisNATe3.time,hisNATe3.OHCfull,'-m');
+legend('PI-control Raw OHC','PI-control Cubic Fit',...
+       'Historial Raw OHC','Historical-NAT Raw OHC','Historical-AER Raw OHC');
+xlim([1800 2100]);
 xlabel('Year');
 ylabel('OHC (J)');
 
-figure;
-plot(PIstd.stdZvP.Tp*2,P,'-k');
+subplot(3,1,2);
+plot(PI.time+1850-100,PI.OHC,'-k');
 hold on;
-plot(PIstd.stdTvP.Tp*2,P,'-r');
-plot(PIstd.stdYvP.Tp*2,P,'-b');
-xlabel('2$\sigma$ variability amplitude ($^\circ$C)');
-ylabel('Percentile');
-legend('$\Theta(p_z)$','$\Theta(p_\Theta)$',['$\Theta(p_\' ...
-                    'phi)$']);
+plot(his.time,his.OHCcubdd,'-b');
+plot(hisNATe1.time,hisNATe1.OHCcubdd,'-r');
+plot(hisAERe1.time,hisAERe1.OHCcubdd,'-m');
+plot(hisGHGe1.time,hisGHGe1.OHCcubdd,'-c');
+% $$$ plot(hisNATe2.time,hisNATe2.OHC,'-','color',[0 0.5 0]);
+% $$$ plot(hisNATe3.time,hisNATe3.OHC,'-m');
+% $$$ plot([1800 2350],[1 1]*2*std(PI.OHC),'--k');
+% $$$ plot([1800 2350],[1 1]*-2*std(PI.OHC),'--k');
+xlabel('Year');
+ylabel('OHC Anomaly (J)');
+legend('PI-control OHC cubic-detrend','Historial OHC cubic-detrend', ...
+       'Historical-NAT OHC cubic-detrend','Historical-AER OHC cubic-detrend', ...
+       'Historical-GHG OHC cubic-detrend');
+xlim([1800 2100]);
 
+subplot(3,1,3);
+plot(PI.time+1850-100,PI.OHC,'-k');
+hold on;
+plot(his.time,his.OHC,'-b');
+plot(hisNATe1.time,hisNATe1.OHC,'-r');
+plot(hisAERe1.time,hisAERe1.OHC,'-r');
+% $$$ plot(hisNATe2.time,hisNATe2.OHC,'-','color',[0 0.5 0]);
+% $$$ plot(hisNATe3.time,hisNATe3.OHC,'-m');
+% $$$ plot([1800 2350],[1 1]*2*std(PI.OHC),'--k');
+% $$$ plot([1800 2350],[1 1]*-2*std(PI.OHC),'--k');
+xlabel('Year');
+ylabel('OHC (J)');
+legend('PI-control OHC cubic-detrend','Historial OHC cubic-and-linear-detrend', ...
+       'Historical-NAT OHC cubic-and-linear-detrend','Historical-AER OHC cubic-and-linear-detrend');
+xlim([1800 2100]);
+
+% $$$ figure;
+% $$$ plot(PIstd.stdZvP.Tp*2,P,'-k');
+% $$$ hold on;
+% $$$ plot(PIstd.stdTvP.Tp*2,P,'-r');
+% $$$ plot(PIstd.stdYvP.Tp*2,P,'-b');
+% $$$ xlabel('2$\sigma$ variability amplitude ($^\circ$C)');
+% $$$ ylabel('Percentile');
+% $$$ legend('$\Theta(p_z)$','$\Theta(p_\Theta)$',['$\Theta(p_\' ...
+% $$$                     'phi)$']);
+% $$$ 
 % Example time series:
 pii = 20;
 [tmp piii] = min(abs(P-pii));
 figure;
-plot(time,ZvP.Tp(piii,:),'-k','linewidth',2);
+plot(his.time,his.ZvP.Tp(piii,:),'-k','linewidth',2);
 hold on;
-plot(time,TvP.Tp(piii,:),'-r','linewidth',2);
-plot([time(1) time(end)],[1 1]*2*PIstd.stdZvP.Tp(piii),'--k');
-plot([time(1) time(end)],[1 1]*-2*PIstd.stdZvP.Tp(piii),'--k');
-plot([time(1) time(end)],[1 1]*2*PIstd.stdTvP.Tp(piii),'--r');
-plot([time(1) time(end)],[1 1]*-2*PIstd.stdTvP.Tp(piii),'--r');
+plot(his.time,his.TvP.Tp(piii,:),'-r','linewidth',2);
+plot(hisNATe1.time,hisNATe1.ZvP.Tp(piii,:),'--k','linewidth',2);
+plot(hisNATe1.time,hisNATe1.TvP.Tp(piii,:),'--r','linewidth',2);
+plot([his.time(1) his.time(end)],[1 1]*2*std(hisNATe1.ZvP.Tp(piii,:)),'--k');
+plot([his.time(1) his.time(end)],[1 1]*-2*std(hisNATe1.ZvP.Tp(piii,:)),'--k');
+plot([his.time(1) his.time(end)],[1 1]*2*std(hisNATe1.TvP.Tp(piii,:)),'--r');
+plot([his.time(1) his.time(end)],[1 1]*-2*std(hisNATe1.TvP.Tp(piii,:)),'--r');
     
 %%%%% Plot mean, climatology, std and trends:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -544,7 +604,8 @@ end
 % $$$     Ylab = '$H(p_\phi)$';
 % $$$ else
 ZvPar = ZvP.Tp;TvPar = TvP.Tp;yvar = YvP.Tp;
-Zcxs = [-0.06 0.002 0.06];
+% $$$ Zcxs = [-0.06 0.002 0.06];
+Zcxs = [-0.2 0.02 0.2];
 Zlab = '$\Theta_z(p_z)$';
 Tcxs = Zcxs;
 Tlab = '$\Theta_\Theta(p_\Theta)$';
@@ -560,7 +621,7 @@ xlims = [yr1 yr1+nyrs];
 % $$$ zlim = [0 10];
 % $$$ tlim = [0 10];
 % $$$ yylim = [40 85];
-xlims = [300 350];
+% $$$ xlims = [300 350];
 % $$$ Zcxs = [-0.2 0.01 0.2];
 % $$$ Tcxs = [-0.2 0.01 0.2];
 % $$$ ycxs = [-0.2 0.01 0.2];
@@ -694,7 +755,6 @@ legend('Nino 3.4','Global SST * 10','Global OHC anomaly ($/10^{22} J$)');
 ylabel('SST ($^\circ$C)');
 xlim(xlims);
 xlabel('Year');
-
 
 %%%%%% Plot P-t of anomalies + budget terms %%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -885,6 +945,7 @@ fs = 12;
 nw = 10;
 [pxx,f] = pmtm(ZvP.Tp(15,:)',nw,[],fs);
 fL = length(f);
+df = f(2)-f(1);
 
 TorH = 1;
 
@@ -927,9 +988,26 @@ poss = [0.07    0.55    0.42    0.4; ...
 pranges = [10 40;
            10 40;
            0 40;]
+pranges = [0 100;
+           0 100;
+           0 100;]
 prangesi = pranges;
 for pi=1:length(pranges(:))
     [tmp prangesi(pi)] = min(abs(P-pranges(pi)));
+end
+
+% Average over frequency ranges and print
+sfr = [5 1; ...
+       100 5];
+for si = 1:length(sfr(:,1))
+    [tmp ind1] = min(abs(f-1/sfr(si,1)));
+    [tmp ind2] = min(abs(f-1/sfr(si,2)));
+    [sprintf('Z var (%01d-%01d years) = %3.2f',sfr(si,2),sfr(si,1), ...
+             10^(4)*mean(sum(ZvP.Tp_spec(ind1:ind2,:)*df,1),2)) '$10^{-4}^\circ$C$^2$']
+    [sprintf('T var (%01d-%01d years) = %3.2f',sfr(si,2),sfr(si,1), ...
+             10^(4)*mean(sum(TvP.Tp_spec(ind1:ind2,:)*df,1),2)) '$10^{-4}^\circ$C$^2$']
+    [sprintf('Y var (%01d-%01d years) = %3.2f',sfr(si,2),sfr(si,1), ...
+             10^(4)*mean(sum(YvP.Tp_spec(ind1:ind2,:)*df,1),2)) '$10^{-4}^\circ$C$^2$']
 end
 
 % Spectral average all terms:
@@ -941,7 +1019,7 @@ plot(f,log10(mean(ZvP.Tp_spec(:,prangesi(1,1):prangesi(1,2)),2)),'-k','linewidth
 hold on;
 plot(f,log10(mean(TvP.Tp_spec(:,prangesi(2,1):prangesi(2,2)),2)),'-r','linewidth',2);
 plot(f,log10(mean(YvP.Tp_spec(:,prangesi(3,1):prangesi(3,2)),2)),'-b','linewidth',2);
-ylim([-5 -2]);
+ylim([-5.5 -2]);
 else
 plot(f,log10(mean(ZvP.Hp_spec(:,prangesi(1,1):prangesi(1,2)),2)),'-k','linewidth',2);
 hold on;
@@ -955,7 +1033,7 @@ set(gca,'xtick',1./xlab);
 set(gca,'xticklabel',[]);
 % $$$ xlabel('Period (years)');
 legend('$\Theta_z$','$\Theta_\Theta$','$\Theta_\phi$','FontSize',10);
-ylabel('Power ($^\circ$C$^2$/year)');
+ylabel('Power $\log_{10}$($^\circ$C$^2$ year)');
 grid on;
 % $$$ title('ACCESS-CM2 PI-control Percentile-Averaged Spectra');
 set(gca,'Position',poss(1,:));
@@ -999,15 +1077,117 @@ else
     ylim([24.5 29.5]);
 end
 if (1)
-    ylabel('Power ($^\circ$C$^2$s$^{-2}$/year)');
+    ylabel('Power $\log_{10}$($^\circ$C$^2$s$^{-2}$ year)');
 % $$$     legend({'d$\Theta(p)$/dt',names{:}});
 else
-    ylabel('Power ($^\circ$C$^2$/year)');
+    ylabel('Power $\log_{10}$($^\circ$C$^2$ year)');
 % $$$     legend({'$\Theta(p)$',names{:}});
 end
 set(gca,'Position',poss(ti+1,:));
 title([tnames{ti} '-percentile budget'],'Color',tcols{ti});
 end
+
+
+%%%% Time-of-emergence
+his = load([baseMAT 'hisPP.mat']);
+hisNATe1 = load([baseMAT 'hisNATe1PP.mat']);
+
+typs = {'T','Z','Y'};
+for ti = 1:length(typs)
+    tn = typs{ti};
+    for pi=1:PL
+        eval(['stdv = std(hisNATe1.' tn 'vP.Tp(pi,:));']);
+        eval(['varv = his.' tn 'vP.Tp(pi,:);']);
+        ind = find(varv<=2*stdv,1,'last');
+        if (ind==length(varv))
+            toe = NaN;
+        else
+            toe = time(ind);
+        end
+        eval([tn 'vP.ToE(pi) = toe;']);
+    end
+end
+
+figure;
+set(gcf,'Position',[23         208        1807         716]);
+set(gcf,'defaulttextfontsize',15);
+set(gcf,'defaultaxesfontsize',15);
+subplot(1,3,1);
+plot(std(hisNATe1.ZvP.Tp,[],2),P,'-k','linewidth',2);
+hold on;
+plot(std(hisNATe1.TvP.Tp,[],2),P,'-r','linewidth',2);
+plot(std(hisNATe1.YvP.Tp,[],2),P,'-b','linewidth',2);
+xlabel('$\sigma$ hist-NAT ($^\circ$C)');
+xlim([0 0.1]);
+ylabel('Percentile');
+ylim([0 100]);
+legend('$\Theta_z(p_z)$','$\Theta_\Theta(p_\Theta)$','$\Theta_\phi(p_\phi)$','Location','SouthEast');
+set(gca,'ydir','reverse')
+pos1 = [0.1759    0.1030    0.2134    0.8150];
+set(gca,'Position',pos1);
+text(28,5,'(a)');
+
+ax2_pos = pos1;
+ax2_pos(1) = pos1(1)-pos1(1)/4;
+ax2_pos(3) = 0.00001;
+ax3_pos = ax2_pos;
+ax3_pos(1) = pos1(1)-1.9*pos1(1)/4;
+ax4_pos = ax2_pos;
+ax4_pos(1) = pos1(1)-3.1*pos1(1)/4;
+
+ax2 = axes('Position',ax2_pos,'XColor','r','YColor','r','FontSize',15);
+set(ax2,'FontSize',15);
+Zticks = [30 18 12:-2:4 3:-1:0];
+Pticks = zeros(size(Zticks));
+for ii=1:length(Zticks)
+    Pticks(ii) = interp1(TvP.Tp_mean,P,Zticks(ii),'linear');
+end
+set(ax2,'ytick',Pticks);
+set(ax2,'yticklabel',Zticks);
+ylabel(ax2,'Temperature ($^\circ$C)');
+ylim(ax2,[0 100]);
+set(ax2,'ydir','reverse');
+
+ax3 = axes('Position',ax3_pos,'XColor','k','YColor','k','FontSize',15);
+Zticks = [0:500:4000 5000];
+Pticks = zeros(size(Zticks));
+for ii=1:length(Zticks)
+    Pticks(ii) = interp1(zofP_mean,P,-Zticks(ii),'linear');
+end
+Pticks(1) = 0;
+set(ax3,'ytick',Pticks);
+set(ax3,'yticklabel',Zticks);
+ylabel(ax3,'Depth (m)');
+ylim(ax3,[0 100]);
+set(ax3,'ydir','reverse');
+
+ax4 = axes('Position',ax4_pos,'XColor','b','YColor','b','FontSize',15);
+Zticks = [-75:15:60];
+Pticks = zeros(size(Zticks));
+for ii=1:length(Zticks)
+    Pticks(ii) = interp1(yofP_mean,P,Zticks(ii),'linear');
+end
+Pticks(1) = 0;
+set(ax4,'ytick',Pticks);
+set(ax4,'yticklabel',Zticks);
+ylabel(ax4,'Latitude ($^\circ$N)');
+ylim(ax4,[0 100]);
+set(gca,'ydir','reverse');
+
+subplot(1,3,2);
+plot(ZvP.ToE,P,'-k','linewidth',2);
+hold on;
+plot(TvP.ToE,P,'-r','linewidth',2);
+plot(YvP.ToE,P,'-b','linewidth',2);
+ylim([0 100]);
+xlabel('Year-of-emergence');
+xlim([1920 2020]);
+set(gca,'ydir','reverse');
+set(gca,'yticklabel',[]);
+set(gca,'Position',[0.4108    0.1030    0.2134    0.8150]);
+text(1860,5,'(b)');
+
+
 
 
 % $$$     
@@ -1460,6 +1640,13 @@ ts = mean(TvP.Tp(90:100,:),1)';
 ts = filter_field(CIN.AMOC,121,'-t');
 ts(isnan(ts)) = 0;
 
+ts = mean(TvP.Tp(18:22,:),1)';
+ts_dec = filter_field(ts,30*12+1,'-t');
+ts_dec(isnan(ts_dec)) = 0;
+ts_lp = ts-ts_dec;
+ts_lp(isnan(ts_lp)) = 0;
+ts = ts_lp;
+
 Tyz_reg = reshape(reshape(Tyz,[yL*zL tL])*ts/(sum(ts.^2)),[yL zL]);
 
 figure;
@@ -1468,7 +1655,7 @@ subplot(2,2,1);
 pcolPlot(X,Y,Tyz_reg);
 set(gca,'ydir','reverse');
 ylim([0 4000]);
-caxis([-1 1]);%-0.5 0.5]);
+% $$$ caxis([-1 1]);%-0.5 0.5]);
 colormap('redblue');
 
 % Time-average:
