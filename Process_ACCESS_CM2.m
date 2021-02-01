@@ -6,7 +6,7 @@
 % msk   = mask key
 
 % Choices:
-dT = 0.2; % temperature grid size.
+dT = 0.05; % temperature grid size.
 
 Tyz = 0; % Only do T(y,z).
 

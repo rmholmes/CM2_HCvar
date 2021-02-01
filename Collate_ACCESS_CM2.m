@@ -1,7 +1,7 @@
 % Collate .mat files created by Process_ACCESS_CM2.m
 
 base = '/scratch/e14/rmh561/access-cm2/HCvar/';
-name = 'hisNATe3_';
+name = 'hisTb05_';
 Tyz = 0;
 
 if (~Tyz)
