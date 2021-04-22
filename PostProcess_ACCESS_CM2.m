@@ -14,18 +14,14 @@ doBUDGET = 1;
 doTyz = 0;
 
 if (PI_or_his == 1)
-% $$$     load([baseMAT 'CM2_PIcontrol_ALL.mat']);
-% $$$     load('CM2_PIcontrol_SH_ALL.mat');
     load([baseMAT 'CM2_PIcontrolTb05__ALL.mat']);
-    saveNAME = 'PIcontrolPP_Tb05_Hint.mat';
-% $$$     load([baseMAT 'CM2_PIcontrolTb05_ypm60_ALL.mat']);
-% $$$     saveNAME = 'PIcontrolPP_ypm60.mat';
-elseif (PI_or_his == 0)
-    load([baseMAT 'CM2_hisTb05__ALL.mat']);
-    saveNAME = 'hisPP_Tb05.mat';
-elseif (PI_or_his == 2)
-    load([baseMAT 'CM2_hisNATe1Tb05__ALL.mat']);
-    saveNAME = 'hisNATe1PP_Tb05.mat';
+    saveNAME = 'PIcontrolTb05PP_nlP_Tint.mat';
+% $$$ elseif (PI_or_his == 0)
+% $$$     load([baseMAT 'CM2_hisTb05__ALL.mat']);
+% $$$     saveNAME = 'hisPP_Tb05.mat';
+% $$$ elseif (PI_or_his == 2)
+% $$$     load([baseMAT 'CM2_hisNATe1Tb05__ALL.mat']);
+% $$$     saveNAME = 'hisNATe1PP_Tb05.mat';
 % $$$ elseif (PI_or_his == 3)
 % $$$     load([baseMAT 'CM2_hisNATe2__ALL.mat']);
 % $$$     saveNAME = 'hisNATe2PP.mat';
@@ -185,7 +181,7 @@ Zv.P   = 100*Zv.V_c./repmat(Zv.V_c(end,:),[zL+1 1]);
 Yv.P   = 100*Yv.V_c./repmat(Yv.V_c(end,:),[yL+1 1]);
 Tv.Pa  = 100*Tv.A_c./repmat(Atot',[TL+1 1]);
 
-NEWold = 1;
+NEWold = 0;
 
 if (NEWold)
 
@@ -259,7 +255,7 @@ else
 end
 
 if (doBUDGET)
-    bvars = {'TEN_c','ADV_c','ADVGM_c','FOR_c','RMIX_c','VMIX_c','JSH_c'};
+    bvars = {'TEN_c','ADV_c','ADVGM_c','FOR_c','RMIX_c','VMIX_c'};
     for ti = 1:tL
         for vi=1:length(bvars)
             [Pun,Iun] = unique(Zv.P(:,ti));
@@ -274,7 +270,7 @@ if (doBUDGET)
         end
     end
 
-% $$$     %%%% Check/plot budgets:
+% $$$     %%%% Pre-anomaly budget plotting:
 % $$$     colors = {'m','b','k','r',[0 0.5 0],'c'};     
 % $$$     figure;
 % $$$     set(gcf,'Position',[1921           1        1920        1005]);
@@ -304,7 +300,7 @@ if (doBUDGET)
 % $$$     bvars = {'TEN_c','ADV_c','FOR_c','RMIX_c','VMIX_c'};
 % $$$     for gi=1:length(bvars)
 % $$$         eval(['var = mean(TvP.' bvars{gi} ',2);']);
-% $$$         plot(var/1e15,Pe,':','color',colors{gi},'linewidth',2);
+% $$$         plot(var/1e15,Pe,'-','color',colors{gi},'linewidth',2);
 % $$$ % $$$         eval(['var = mean(Tv.' bvars{gi} ',2);']);
 % $$$ % $$$         plot(var/1e15,Te,':','color',colors{gi},'linewidth',2);
 % $$$         hold on;
@@ -315,7 +311,7 @@ if (doBUDGET)
 % $$$     set(gca,'yticklabel',[]);
 % $$$     xlabel('Cold-to-warm Diathermal heat transport (PW)');
 % $$$     legend('$\partial\mathcal{H}_\Theta/\partial t$','$\mathcal{M}_\Theta^{numerical}$','$\mathcal{F}_\Theta$',...
-% $$$            '$\mathcal{M}_\Theta^{neutral}$','$\mathcal{M}_\Theta^{vertical}$','JSH');
+% $$$            '$\mathcal{M}_\Theta^{neutral}$','$\mathcal{M}_\Theta^{vertical}$');
 % $$$     set(gca,'Position',[0.3661    0.1400    0.2580    0.8150]);
 % $$$ 
 % $$$     subplot(1,3,3);
@@ -641,6 +637,5 @@ end
     
 if (saveMAT)
     save([baseMAT saveNAME]);
-
 end
 
