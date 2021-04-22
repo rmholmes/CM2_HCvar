@@ -50,6 +50,9 @@ elseif (strcmp(msk,'NH'))
 elseif (strcmp(msk,'SH'))
     'Southern Hemisphere'
     mask2D = 1*(lat<=0);
+elseif (strcmp(msk,'ypm60'))
+    '60S-60N'
+    mask2D = abs(lat)<=60;
 end
 
 % A(z):

@@ -6,12 +6,12 @@ import fileinput
 import glob
 
 # Files:
-PI_or_his = 2
+PI_or_his = 1
 obase = '/scratch/e14/rmh561/access-cm2/HCvar/'
 
 if PI_or_his==1:
     base = '/g/data/p66/cm2704/archive/bi889/history/ocn/';
-    name = 'PIcontrolTb02'
+    name = 'PIcontrolTb05'
 elif PI_or_his==0:
     base = '/g/data/p66/cm2704/archive/bj594/history/ocn/';
     name = 'hisTb05'
@@ -37,12 +37,13 @@ dates = [x[-8:] for x in files]
 dates = sorted(dates,key=lambda x: int(x))
 
 # Mask:
-msk = ''
+msk = 'ypm60'
 
 # Split into sets of 600 runs for PI control (ss is 0,1):
-# ss = 1
-# dates = dates[ss*600:ss*600+600]
+ss = 1
+dates = dates[ss*600:ss*600+600]
 # dates = ['11500630']
+# dates = ['19640630','18591231']
 
 # Testing (do only 3):
 # dates = dates[:3]
