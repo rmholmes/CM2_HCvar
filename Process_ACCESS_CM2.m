@@ -113,10 +113,10 @@ for Ti=1:TL
     Tv.A(Ti,:) = Tv.A(Ti,:) + squeeze(nansum(nansum(repmat(area.*mask2D,[1 1 tL]).*indsS,1),2))';
 end
 % Account for water warmer than max temperature (possible for CM2):
-inds = temp>Te(end);
+inds = temp>=Te(end);
 Tv.V(end,:) = Tv.V(end,:) + squeeze(nansum(nansum(nansum(V.*inds,1),2),3))';
 Tv.H(end,:) = Tv.H(end,:) + squeeze(nansum(nansum(nansum(H.*inds,1),2),3))';
-indsS = SST>Te(end);
+indsS = SST>=Te(end);
 Tv.A(end,:) = Tv.A(end,:) + squeeze(nansum(nansum(repmat(area.*mask2D,[1 1 tL]).*indsS,1),2))';
 
 % $$$ Yv.time = time; Tv.DT_A = DT_A;
