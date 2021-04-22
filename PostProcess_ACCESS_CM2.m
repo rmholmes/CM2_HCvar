@@ -10,31 +10,32 @@ PI_or_his = 1;
 % 5 = hisAER e1, 6 = hisGHG e1
 
 % Streamline post-processing:
-doBUDGET = 0;
+doBUDGET = 1;
 doTyz = 0;
 
 if (PI_or_his == 1)
-    load([baseMAT 'CM2_PIcontrol_ALL.mat']);
+% $$$     load([baseMAT 'CM2_PIcontrol_ALL.mat']);
 % $$$     load('CM2_PIcontrol_SH_ALL.mat');
-    saveNAME = 'PIcontrolPP.mat';
+    load([baseMAT 'CM2_PIcontrolTb05__ALL.mat']);
+    saveNAME = 'PIcontrolPP_Tb05.mat';
 elseif (PI_or_his == 0)
-    load([baseMAT 'CM2_his__ALL.mat']);
-    saveNAME = 'hisPP.mat';
+    load([baseMAT 'CM2_hisTb05__ALL.mat']);
+    saveNAME = 'hisPP_Tb05.mat';
 elseif (PI_or_his == 2)
-    load([baseMAT 'CM2_hisNATe1__ALL.mat']);
-    saveNAME = 'hisNATe1PP.mat';
-elseif (PI_or_his == 3)
-    load([baseMAT 'CM2_hisNATe2__ALL.mat']);
-    saveNAME = 'hisNATe2PP.mat';
-elseif (PI_or_his == 4)
-    load([baseMAT 'CM2_hisNATe3__ALL.mat']);
-    saveNAME = 'hisNATe3PP.mat';
-elseif (PI_or_his == 5)
-    load([baseMAT 'CM2_hisAERe1__ALL.mat']);
-    saveNAME = 'hisAERe1PP.mat';
-elseif (PI_or_his == 6)
-    load([baseMAT 'CM2_hisGHGe1__ALL.mat']);
-    saveNAME = 'hisGHGe1PP.mat';
+    load([baseMAT 'CM2_hisNATe1Tb05__ALL.mat']);
+    saveNAME = 'hisNATe1PP_Tb05.mat';
+% $$$ elseif (PI_or_his == 3)
+% $$$     load([baseMAT 'CM2_hisNATe2__ALL.mat']);
+% $$$     saveNAME = 'hisNATe2PP.mat';
+% $$$ elseif (PI_or_his == 4)
+% $$$     load([baseMAT 'CM2_hisNATe3__ALL.mat']);
+% $$$     saveNAME = 'hisNATe3PP.mat';
+% $$$ elseif (PI_or_his == 5)
+% $$$     load([baseMAT 'CM2_hisAERe1__ALL.mat']);
+% $$$     saveNAME = 'hisAERe1PP.mat';
+% $$$ elseif (PI_or_his == 6)
+% $$$     load([baseMAT 'CM2_hisGHGe1__ALL.mat']);
+% $$$     saveNAME = 'hisGHGe1PP.mat';
 end
 
 saveMAT = 1;
@@ -42,7 +43,7 @@ saveMAT = 1;
 %%%%%%
 
 % Define a new percentile grid:
-dP = 1;%0.25;
+dP = 0.25;
 Pe = 0:dP:100;
 P = (Pe(2:end)+Pe(1:end-1))/2;
 PL = length(P);
@@ -140,52 +141,57 @@ OHC = squeeze(Zv.H_c(end,:))';
 % $$$ end    
 
 
-% $$$ %%% New approach: Interpolate HC
-% $$$     % Interpolate only high-resolution grids for smoothness:
-% $$$     zfac = 1;
-% $$$ % $$$     Zv.H_c = interp1(Zv.H_c,1:1/zfac:(zL+1));Zv.V_c = interp1(Zv.V_c,1:1/zfac:(zL+1));
-% $$$     Tfac = 1;
-% $$$ % $$$     Tv.H_c = interp1(Tv.H_c,1:1/Tfac:(TL+1));Tv.V_c = interp1(Tv.V_c,1:1/Tfac:(TL+1));
-% $$$     yfac = 1;
-% $$$ % $$$     Yv.H_c = interp1(Yv.H_c,1:1/yfac:(yL+1));Yv.V_c = interp1(Yv.V_c,1:1/yfac:(yL+1));
-% $$$ 
-% $$$     % Remap to ocean percentile
-% $$$     Vtot = Zv.V_c(end,:)';
-% $$$     Tv.P   = 100*Tv.V_c./repmat(Vtot',[TL*Tfac+1 1]);
-% $$$     Zv.P   = 100*Zv.V_c./repmat(Vtot',[zL*zfac+1 1]);
-% $$$     Yv.P   = 100*Yv.V_c./repmat(Vtot',[yL*yfac+1 1]);
-% $$$ 
+%%% Remap to percentile
+
+% Define percentiles using volume:
+Vtot = Zv.V_c(end,:)';
+Atot = Tv.A_c(1,:)';
+Tv.P   = 100*Tv.V_c./repmat(Vtot',[TL+1 1]);
+Zv.P   = 100*Zv.V_c./repmat(Vtot',[zL+1 1]);
+Yv.P   = 100*Yv.V_c./repmat(Vtot',[yL+1 1]);
+Tv.Pa  = 100*Tv.A_c./repmat(Atot',[TL+1 1]);
+
+NEWold = 0;
+bvars = {'TEN_c','ADV_c','ADVGM_c','FOR_c','RMIX_c','VMIX_c'};
+
+if (NEWold)
+
+    %%% New approach: Interpolate HC
+    % Interpolate onto high-resolution grids for smoothness:
+    zfac = 1;
+% $$$     Zv.H_c = interp1(Zv.H_c,1:1/zfac:(zL+1));Zv.V_c = interp1(Zv.V_c,1:1/zfac:(zL+1));
+    Tfac = 1;
+% $$$     Tv.H_c = interp1(Tv.H_c,1:1/Tfac:(TL+1));Tv.V_c = interp1(Tv.V_c,1:1/Tfac:(TL+1));
+    yfac = 1;
+% $$$     Yv.H_c = interp1(Yv.H_c,1:1/yfac:(yL+1));Yv.V_c = interp1(Yv.V_c,1:1/yfac:(yL+1));
+
 % $$$     ZvP.Hp = zeros(PL+1,tL);
 % $$$     YvP.Hp = zeros(PL+1,tL);
 % $$$     TvP.Hp = zeros(PL+1,tL);
-% $$$     for ti = 1:tL
-% $$$         ZvP.Hp(:,ti) = interp1((Zv.P(:,ti)+(1:zL*zfac+1)'/1e10),Zv.H_c(:,ti),Pe,'linear');
-% $$$         YvP.Hp(:,ti) = interp1((Yv.P(:,ti)+(1:yL*yfac+1)'/1e10),Yv.H_c(:,ti),Pe,'linear');
-% $$$         TvP.Hp(:,ti) = interp1((Tv.P(:,ti)+(1:TL*Tfac+1)'/1e10),Tv.H_c(:,ti),Pe,'linear');
-% $$$     end
-% $$$     ZvP.Hp(1,:) = 0;
-% $$$     YvP.Hp(1,:) = 0;
-% $$$     TvP.Hp(1,:) = 0;
-% $$$ 
-% $$$     % Calculate temperatures from HC:
-% $$$     ZvP.Tp = (ZvP.Hp(2:end,:)-ZvP.Hp(1:(end-1),:))/rho0/Cp*100/dP./repmat(Vtot',[PL 1]);
-% $$$     YvP.Tp = (YvP.Hp(2:end,:)-YvP.Hp(1:(end-1),:))/rho0/Cp*100/dP./repmat(Vtot',[PL 1]);
-% $$$     TvP.Tp = (TvP.Hp(2:end,:)-TvP.Hp(1:(end-1),:))/rho0/Cp*100/dP./repmat(Vtot',[PL 1]);
-% $$$ 
-% $$$     zofP_mean = -interp1(mean(Zv.P(1:zfac:end,:),2),Ze,P,'linear'); % Depth axis to
-% $$$                                                     % go with depth-volume
-% $$$     yofP_mean = interp1(mean(Yv.P(1:yfac:end,:),2)+(1:yL+1)'/1e10,latv_edges,P,'linear'); % Depth axis to
-% $$$                                                     % go with depth-volume
+% $$$     TvP.Hap = zeros(PL+1,tL);
+    for ti = 1:tL
+        ZvP.Hp(:,ti) = interp1((Zv.P(:,ti)+(1:zL*zfac+1)'/1e10),Zv.H_c(:,ti),Pe,'linear');
+        YvP.Hp(:,ti) = interp1((Yv.P(:,ti)+(1:yL*yfac+1)'/1e10),Yv.H_c(:,ti),Pe,'linear');
+        TvP.Hp(:,ti) = interp1((Tv.P(:,ti)+(1:TL*Tfac+1)'/1e10),Tv.H_c(:,ti),Pe,'linear');
+        TvP.Hap(:,ti) = interp1((Tv.Pa(:,ti)+(1:TL*Tfac+1)'/1e10),Tv.A_c(:,ti),Pe,'linear');
+    end
+    ZvP.Hp(1,:) = 0;
+    YvP.Hp(1,:) = 0;
+    TvP.Hp(1,:) = 0;
+    TvP.Hap(1,:) = 0;
+    ZvP.Hp(end,:) = Zv.H_c(end,:);
+    YvP.Hp(end,:) = Yv.H_c(end,:);
+    TvP.Hp(end,:) = Yv.H_c(1,:);
+    TvP.Hap(end,:) = Tv.A_c(1,:);
 
+    % Calculate temperatures from HC:
+    ZvP.Tp = (ZvP.Hp(2:end,:)-ZvP.Hp(1:(end-1),:))/rho0/Cp*100/dP./repmat(Vtot',[PL 1]);
+    YvP.Tp = (YvP.Hp(2:end,:)-YvP.Hp(1:(end-1),:))/rho0/Cp*100/dP./repmat(Vtot',[PL 1]);
+    TvP.Tp = (TvP.Hp(2:end,:)-TvP.Hp(1:(end-1),:))/rho0/Cp*100/dP./repmat(Vtot',[PL 1]);
+    TvP.Tap = (TvP.Hap(2:end,:)-TvP.Hap(1:(end-1),:))/rho0/Cp*100/dP./repmat(Atot',[PL 1]);
+
+else
     %%% Old approach: Interpolate temperatures
-    % Remap to ocean percentile
-    Vtot = Zv.V_c(end,:)';
-    Atot = Tv.A_c(1,:)';
-    Tv.P   = 100*Tv.V_c./repmat(Vtot',[TL+1 1]);
-    Zv.P   = 100*Zv.V_c./repmat(Vtot',[zL+1 1]);
-    Yv.P   = 100*Yv.V_c./repmat(Vtot',[yL+1 1]);
-    Tv.Pa  = 100*Tv.A_c./repmat(Atot',[TL+1 1]);
-
     % Calculate z-temperature:
     Zv.T = Zv.H/rho0/Cp./Zv.V;
     Zv.Te = cat(1,Zv.T(1,:),(Zv.T(2:end,:)+Zv.T(1:end-1,:))/2,Zv.T(end,:));
@@ -195,11 +201,10 @@ OHC = squeeze(Zv.H_c(end,:))';
     Yv.Te = cat(1,Yv.T(1,:),(Yv.T(2:end,:)+Yv.T(1:end-1,:))/2,Yv.T(end,:));
 
     % Interpolate variables to P levels:
-    TvP.Tp = zeros(PL,tL);
-    TvP.Tap = zeros(PL,tL);
-    ZvP.Tp = zeros(PL,tL);
-    YvP.Tp = zeros(PL,tL);
-    bvars = {'TEN_c','ADV_c','ADVGM_c','FOR_c','RMIX_c','VMIX_c'};
+% $$$     TvP.Tp = zeros(PL,tL);
+% $$$     TvP.Tap = zeros(PL,tL);
+% $$$     ZvP.Tp = zeros(PL,tL);
+% $$$     YvP.Tp = zeros(PL,tL);
     for ti = 1:tL
         TvP.Tp(:,ti) = interp1(Tv.P(:,ti)+(1:TL+1)'/1e10,Te,P,'linear');
         TvP.Tp(1,ti) = Te(end);
@@ -207,7 +212,11 @@ OHC = squeeze(Zv.H_c(end,:))';
         TvP.Tap(1,ti) = Te(end);
         ZvP.Tp(:,ti) = interp1(Zv.P(:,ti)+(1:zL+1)'/1e10,Zv.Te(:,ti),P,'linear');
         YvP.Tp(:,ti) = interp1(Yv.P(:,ti)+(1:yL+1)'/1e10,Yv.Te(:,ti),P,'linear');
-        if (doBUDGET)
+    end
+end
+
+if (doBUDGET)
+    for ti = 1:tL
         for vi=1:length(bvars)
             eval(['ZvP.' bvars{vi} '(:,ti) = interp1(Zv.P(:,ti)+(1:zL+1)''/1e10,Zv.' bvars{vi} '(:,ti),Pe,''linear'');']);
             eval(['YvP.' bvars{vi} '(:,ti) = interp1(Yv.P(:,ti)+(1:yL+1)''/1e10,Yv.' bvars{vi} '(:,ti),Pe,''linear'');']);
@@ -216,9 +225,8 @@ OHC = squeeze(Zv.H_c(end,:))';
             eval(['TvP.' bvars{vi} '(1,ti) = 0;']);eval(['TvP.' bvars{vi} '(end,ti) = Tv.' bvars{vi} '(1,ti);']);
             eval(['YvP.' bvars{vi} '(1,ti) = 0;']);eval(['YvP.' bvars{vi} '(end,ti) = Yv.' bvars{vi} '(end,ti);']);
         end
-        end
     end
-    
+
 % $$$     %%%% Check/plot budgets:
 % $$$     colors = {'m','b','k','r',[0 0.5 0]};     
 % $$$     figure;
@@ -271,12 +279,6 @@ OHC = squeeze(Zv.H_c(end,:))';
 % $$$            '$\mathcal{A}_\phi^{diffusive}$');
 % $$$     set(gca,'Position',[0.7    0.1400    0.2580    0.8150]);
 
-
-    zofP_mean = -interp1(mean(Zv.P,2),Ze,P,'linear'); % Depth axis to
-                                                    % go with depth-volume
-    yofP_mean = interp1(mean(Yv.P,2)+(1:yL+1)'/1e10,latv_edges,P,'linear'); % Depth axis to
-                                                    % go with depth-volume
-    if (doBUDGET)
     % Time-integrate budget terms:
     for ti =1:length(typs)
         for vi=1:length(bvars)
@@ -284,7 +286,13 @@ OHC = squeeze(Zv.H_c(end,:))';
                   'vP.' bvars{vi} '.*repmat(DT_A'',[PL+1 1]),2);']);
         end
     end    
-    end
+
+end
+
+    zofP_mean = -interp1(mean(Zv.P,2),Ze,P,'linear'); % Depth axis to
+                                                    % go with depth-volume
+    yofP_mean = interp1(mean(Yv.P,2)+(1:yL+1)'/1e10,latv_edges,P,'linear'); % Depth axis to
+                                                    % go with depth-volume
     
     % Construct climatology and make years even:
     if (PI_or_his == 1)
@@ -321,9 +329,14 @@ OHC = squeeze(Zv.H_c(end,:))';
     
     % Calculate cubic drift trend and subtract:
     fnames = fieldnames(TvP);
-    ZvP.Tap = TvP.Tap;
-    YvP.Tap = TvP.Tap; % for convience -> delete after...
-
+    if (isfield(TvP,'Tap'))
+        ZvP.Tap = TvP.Tap;
+        YvP.Tap = TvP.Tap;
+    end
+    if (isfield(TvP,'Hap'))
+        ZvP.Hap = TvP.Hap;
+        YvP.Hap = TvP.Hap; % for convience -> delete after...
+    end
     if (PI_or_his == 1) % Calculate cubic drift from PI-control
         
     for ti = 1:length(typs)
@@ -362,7 +375,7 @@ OHC = squeeze(Zv.H_c(end,:))';
         t2 = (time-Itime).^2;
         t3 = (time-Itime).^3;
         
-        PIcont = load([baseMAT 'PIcontrolPP.mat'],'ZvP','TvP','YvP','OHC_cubtr','time');
+        PIcont = load([baseMAT 'PIcontrolPP_Tb05.mat'],'ZvP','TvP','YvP','OHC_cubtr','time');
         
         for ti = 1:length(typs)
             for vi = 1:length(fnames)
@@ -425,7 +438,7 @@ OHC = squeeze(Zv.H_c(end,:))';
             [OHC_lin,OHC_lintr] = linfit(time,OHC);
             OHC = OHC-OHC_lin;
         elseif (PI_or_his == 0)
-            hisNATe1 = load([baseMAT 'hisNATe1PP.mat'],'ZvP','TvP','YvP','OHC_lintr','time');
+            hisNATe1 = load([baseMAT 'hisNATe1PP_Tb05.mat'],'ZvP','TvP','YvP','OHC_lintr','time');
         
             for ti = 1:length(typs)
                 for vi = 1:length(fnames)
