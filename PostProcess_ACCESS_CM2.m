@@ -15,7 +15,7 @@ doTyz = 0;
 
 if (PI_or_his == 1)
     load([baseMAT 'CM2_PIcontrolTb05__ALL.mat']);
-    saveNAME = 'PIcontrolTb05PP_nlP_Tint.mat';
+    saveNAME = 'PIcontrolTb05PP_Tint.mat';
 % $$$ elseif (PI_or_his == 0)
 % $$$     load([baseMAT 'CM2_hisTb05__ALL.mat']);
 % $$$     saveNAME = 'hisPP_Tb05.mat';
@@ -42,29 +42,29 @@ saveMAT = 1;
 
 % Define a new percentile grid:
 
-% $$$ % linear:
-% $$$ dP = 0.25;
-% $$$ Pe = 0:dP:100;
-% $$$ P = (Pe(2:end)+Pe(1:end-1))/2;
-% $$$ PL = length(P);
-% $$$ dP = repmat(dP,[PL 1]);
-
-% Non-linear using mean T:
-Vmean = cat(1,cumsum(mean(Tv.V,2),1,'reverse'),0);
-Pe = unique((Vmean/Vmean(1))*100);
-% $$$ % double number of points:
-% $$$ PeN = zeros(length(Pe)*2-1,1);
-% $$$ PeN(1) = Pe(1);PeN(end) = Pe(end);
-% $$$ cnt = 1;
-% $$$ for ii = 1:(length(Pe)-1)
-% $$$     PeN(cnt+1) = (Pe(ii) + Pe(ii+1))/2;
-% $$$     PeN(cnt+2) = Pe(ii+1);
-% $$$     cnt = cnt+2;
-% $$$ end
-% $$$ Pe = PeN;
-dP = diff(Pe);
+% linear:
+dP = 0.25;
+Pe = 0:dP:100;
 P = (Pe(2:end)+Pe(1:end-1))/2;
 PL = length(P);
+dP = repmat(dP,[PL 1]);
+
+% $$$ % Non-linear using mean T:
+% $$$ Vmean = cat(1,cumsum(mean(Tv.V,2),1,'reverse'),0);
+% $$$ Pe = unique((Vmean/Vmean(1))*100);
+% $$$ % $$$ % double number of points:
+% $$$ % $$$ PeN = zeros(length(Pe)*2-1,1);
+% $$$ % $$$ PeN(1) = Pe(1);PeN(end) = Pe(end);
+% $$$ % $$$ cnt = 1;
+% $$$ % $$$ for ii = 1:(length(Pe)-1)
+% $$$ % $$$     PeN(cnt+1) = (Pe(ii) + Pe(ii+1))/2;
+% $$$ % $$$     PeN(cnt+2) = Pe(ii+1);
+% $$$ % $$$     cnt = cnt+2;
+% $$$ % $$$ end
+% $$$ % $$$ Pe = PeN;
+% $$$ dP = diff(Pe);
+% $$$ P = (Pe(2:end)+Pe(1:end-1))/2;
+% $$$ PL = length(P);
 
 % Time vector:
 tL = length(time);
