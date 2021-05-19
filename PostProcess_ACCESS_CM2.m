@@ -97,7 +97,8 @@ typs = {'T','Z','Y'};
 vars = {'temp_submeso', 'temp_vdiffuse_diff_cbt', 'temp_nonlocal_KPP', ...
         'temp_vdiffuse_sbc','frazil_3d','sw_heat','temp_rivermix', ...
         'neutral_diffusion_temp','neutral_gm_temp', 'temp_vdiffuse_k33', 'mixdownslope_temp', ...
-        'temp_sigma_diff','sfc_hflux_pme','temp_eta_smooth'};    
+        'temp_sigma_diff','sfc_hflux_pme','temp_eta_smooth'};
+
 if (doBUDGET)
 for ty = 1:length(typs)
     eval([typs{ty} 'v.temp_advection = ' typs{ty} 'v.temp_tendency;']);
@@ -106,6 +107,10 @@ for ty = 1:length(typs)
                        ' - ' typs{ty} 'v.' vars{vi} ';']);
     end
 end
+% advection = tendency - submeso - diff_cbt - nonlocal_KPP - sbc -
+% frazil - sw_heat - rivermix - neutral_diffusion_temp -
+% neutral_gm_temp - vdiffuse_k33 - mixdownslope_temp - sigma_diff -
+% hflux_pme - eta_smooth
 
 % group budget terms:
 for vi = 1:length(typs)
@@ -118,6 +123,8 @@ for vi = 1:length(typs)
     eval([typs{vi} 'v.RMIX = ' typs{vi} 'v.neutral_diffusion_temp+' typs{vi} 'v.temp_vdiffuse_k33+' typs{vi} 'v.mixdownslope_temp' ...
           '+' typs{vi} 'v.temp_sigma_diff;']);
     eval([typs{vi} 'v.VMIX = ' typs{vi} 'v.temp_vdiffuse_diff_cbt+' typs{vi} 'v.temp_nonlocal_KPP;']);
+% $$$     eval([typs{vi} 'v.ADV = ' typs{vi} 'v.TEN-' typs{vi} 'v.FOR-' ...
+% $$$           typs{vi} 'v.RMIX-' typs{vi} 'v.VMIX;']); - Machine noise error!! Zv is 4 / 2.5e15, Tv is 0.125 / 1.27e14
 end
 vars = {vars{:},'temp_tendency','temp_advection'};
 
@@ -153,10 +160,21 @@ if (doBUDGET)
     % JSH = pme_river*Theta*Cp = kg/sec * degC * J kg-1 degC-1 = W
     JSH_c = Tv.pme_river_c*Cp.*repmat(Te',[1 tL]);
     Tv.FOR_c = Tv.FOR_c - JSH_c;
-    Tv.ADV_c = Tv.ADV_c - JSH_c;
+    Tv.ADV_c = Tv.ADV_c + JSH_c;
     Tv = rmfield(Tv,'pme_river');Zv = rmfield(Zv,'pme_river');Yv = rmfield(Yv,'pme_river');
     Tv = rmfield(Tv,'pme_river_c');Zv = rmfield(Zv,'pme_river_c');Yv = rmfield(Yv,'pme_river_c');
 end
+
+% $$$ % Check temperature budget:
+% $$$ figure;
+% $$$ plot(Te,mean(Tv.TEN_c,2),'-m');
+% $$$ hold on;
+% $$$ plot(Te,mean(Tv.FOR_c,2),'-k');
+% $$$ plot(Te,mean(Tv.ADV_c,2),'-b');
+% $$$ plot(Te,mean(Tv.RMIX_c,2),'-g');
+% $$$ plot(Te,mean(Tv.VMIX_c,2),'-r');
+% $$$ plot(Te,mean(Tv.JSH_c,2),'-c');
+% $$$ 
 
 OHC = squeeze(Zv.H_c(end,:))';
 
