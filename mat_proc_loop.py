@@ -37,7 +37,8 @@ dates = [x[-8:] for x in files]
 dates = sorted(dates,key=lambda x: int(x))
 
 # Mask:
-msk = 'ypm60'
+#msk = 'ypm60'
+msk = ''
 
 # Split into sets of 600 runs for PI control (ss is 0,1):
 ss = 1

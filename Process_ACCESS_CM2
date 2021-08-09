@@ -8,7 +8,6 @@
 #PBS -l software=matlab_unsw
 #PBS -l storage=gdata/hh5+scratch/e14+gdata/e14+gdata/p66
 #PBS -q express
-#PBS -m e
 
 module load matlab
 module load matlab_licence/unsw

@@ -94,8 +94,8 @@ if (Tyz)
 elseif (MOCyz)
 %%%% MOC anomalies in y-z:
 
-    MOCyzS.MOC = nansum(ncread(fname,'ty_trans'),1);
-    MOCyzS.MOCgm = nansum(ncread(fname,'ty_trans_gm'),1);    
+    MOCyzS.MOC = squeeze(nansum(ncread(fname,'ty_trans'),1));
+    MOCyzS.MOCgm = squeeze(nansum(ncread(fname,'ty_trans_gm'),1));    
     
     onameyz = [oname(1:end-4) '_MOCyz.mat'];
     save(onameyz,'MOCyzS');
