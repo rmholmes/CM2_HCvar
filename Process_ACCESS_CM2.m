@@ -9,7 +9,7 @@
 dT = 0.05; % temperature grid size.
 
 Tyz = 0; % Only do T(y,z).
-MOCyz = 0; % Only do MOC(y,z).
+MOCyz = 1; % Only do MOC(y,z).
 
 %%%% Grid (time-constant) and time info:
 

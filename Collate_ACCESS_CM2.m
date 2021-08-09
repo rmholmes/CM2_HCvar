@@ -3,8 +3,9 @@
 base = '/scratch/e14/rmh561/access-cm2/HCvar/';
 name = 'PIcontrolTb05_ypm60';
 Tyz = 0;
+MOCyz = 1;
 
-if (~Tyz)
+if (~Tyz & ~MOCyz)
 
 files = dir([base 'CM2_' name '_*.mat']);
 
@@ -57,7 +58,7 @@ clear next files CINfields Tvfields Yvfields Zvfields fname ...
 
 save([base 'CM2_' name '_ALL.mat']);
 
-else
+elseif (Tyz)
 
 files = dir([base 'CM2_' name '_*_Tyz.mat']);
 
@@ -88,5 +89,37 @@ end
 clear next files Tyzfields fname fi vi;
 
 save([base 'CM2_' name '_Tyz_ALL.mat']);
+
+elseif (MOCyz)
+
+files = dir([base 'CM2_' name '_*_MOCyz.mat']);
+
+% Fix order:
+nums = [];
+for fi=1:length(files)
+    fname = files(fi).name;
+    num = str2num(fname(end-17:end-10));
+    nums = cat(1,nums,num);
+end
+
+nums = sort(nums);
+ 
+% MOCyz collate:
+load(sprintf([base 'CM2_' name '_%08d_MOCyz.mat'],nums(1)));
+MOCyzfields = fieldnames(MOCyzS);
+
+for fi = 2:length(nums)
+    fname = sprintf([base 'CM2_' name '_%08d_MOCyz.mat'],nums(fi))
+    next = load(fname);
+
+    for vi = 1:length(MOCyzfields)
+        eval(['MOCyzS.' MOCyzfields{vi} ' = cat(3,MOCyzS.' MOCyzfields{vi} ...
+              ',next.MOCyzS.' MOCyzfields{vi} ');']);
+    end
+end
+
+clear next files MOCyzfields fname fi vi;
+
+save([base 'CM2_' name '_MOCyz_ALL.mat']);
 
 end
