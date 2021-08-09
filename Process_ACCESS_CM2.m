@@ -9,6 +9,7 @@
 dT = 0.05; % temperature grid size.
 
 Tyz = 0; % Only do T(y,z).
+MOCyz = 0; % Only do MOC(y,z).
 
 %%%% Grid (time-constant) and time info:
 
@@ -82,13 +83,23 @@ V(isnan(V)) = 0;
 H = rho0*Cp*temp.*V;
 SST = squeeze(temp(:,:,1,:));
 
+if (Tyz)
 %%%% Temperature anomalies in y-z:
 
-if (Tyz)
     TyzS.V = squeeze(nansum(V,1));
     TyzS.H = squeeze(nansum(H,1));
     onameyz = [oname(1:end-4) '_Tyz.mat'];
     save(onameyz,'TyzS');
+
+elseif (MOCyz)
+%%%% MOC anomalies in y-z:
+
+    MOCyzS.MOC = nansum(ncread(fname,'ty_trans'),1);
+    MOCyzS.MOCgm = nansum(ncread(fname,'ty_trans_gm'),1);    
+    
+    onameyz = [oname(1:end-4) '_MOCyz.mat'];
+    save(onameyz,'MOCyzS');
+    
 else
 %%%% Heat and volume:
 
