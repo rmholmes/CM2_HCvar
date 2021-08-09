@@ -14,8 +14,10 @@ doBUDGET = 1;
 doTyz = 0;
 
 if (PI_or_his == 1)
-    load([baseMAT 'CM2_PIcontrolTb05__ALL.mat']);
-    saveNAME = 'PIcontrolTb05PP_Tint.mat';
+% $$$     load([baseMAT 'CM2_PIcontrolTb05__ALL.mat']);
+% $$$     saveNAME = 'PIcontrolTb05PP_Tint.mat';
+    load([baseMAT 'CM2_PIcontrolTb05_ypm60_ALL.mat']);
+    saveNAME = 'PIcontrolTb05PP_ypm60_Tint.mat';
 % $$$ elseif (PI_or_his == 0)
 % $$$     load([baseMAT 'CM2_hisTb05__ALL.mat']);
 % $$$     saveNAME = 'hisPP_Tb05.mat';
@@ -290,26 +292,41 @@ if (doBUDGET)
 
 % $$$     %%%% Pre-anomaly budget plotting:
 % $$$     colors = {'m','b','k','r',[0 0.5 0],'c'};     
+% $$$     DER = 1;
 % $$$     figure;
 % $$$     set(gcf,'Position',[1921           1        1920        1005]);
 % $$$     subplot(1,3,1);
 % $$$     bvars = {'TEN_c','ADV_c','FOR_c','RMIX_c','VMIX_c'};
 % $$$     for gi=1:length(bvars)
 % $$$         eval(['var = mean(ZvP.' bvars{gi} ',2);']);
-% $$$         plot(var/1e15,Pe,'-','color',colors{gi},'linewidth',2);
+% $$$         if (DER)
+% $$$             var = diff(var,[],1)./dP*100/rho0/Cp/mean(Vtot);
+% $$$             plot(var/1e-9,P,'-','color',colors{gi},'linewidth',2);        
+% $$$         else 
+% $$$             plot(var/1e15,Pe,'-','color',colors{gi},'linewidth',2);
+% $$$         end
 % $$$         hold on;
 % $$$     end
 % $$$     plot([0 0],[0 100],'--k');
 % $$$     ylabel('Percentile');
 % $$$     set(gca,'ydir','reverse');
 % $$$     ylim([0 100]);
-% $$$     xlim([-2 2]);
-% $$$     xlabel('Upward Vertical heat transport (PW)');
-% $$$     legend('$\partial\mathcal{H}_z/\partial t$','$\mathcal{A}_z$','$\mathcal{F}_z$',...
-% $$$            '$\mathcal{M}_z^{neutral}$',['$\' ...
-% $$$                         'mathcal{M}_z^{vertical}$']);
+% $$$     if (~DER)
+% $$$         xlim([-2 2]);
+% $$$         xlabel('Upward Vertical heat transport (PW)');
+% $$$         legend('$\partial\mathcal{H}_z/\partial t$','$\mathcal{A}_z$','$\mathcal{F}_z$',...
+% $$$                '$\mathcal{M}_z^{neutral}$',['$\' ...
+% $$$                             'mathcal{M}_z^{vertical}$']);
+% $$$     else
+% $$$         xlabel('Temperature Tendency ($10^{-9}$ $^\circ$Cs $^{-1}$)');
+% $$$         legend('$\partial\mathcal{\Theta}_z/\partial t$', ...
+% $$$                '$\frac{100}{\rho_0C_p\mathcal{V}_T}\partial\mathcal{A}_z/\partial p_z$',...
+% $$$                '$\frac{100}{\rho_0C_p\mathcal{V}_T}\partial\mathcal{F}_z/\partial p_z$',...
+% $$$                '$\frac{100}{\rho_0C_p\mathcal{V}_T}\partial\mathcal{M}_z^{neutral}/\partial p_z$',...
+% $$$                '$\frac{100}{\rho_0C_p\mathcal{V}_T}\partial\mathcal{M}_z^{vertical}/\partial p_z$');
+% $$$     end
 % $$$     set(gca,'Position',[0.06   0.1400    0.2580    0.8150]);
-% $$$     
+% $$$ % $$$ $100(\rho_0 C_p \mathcal{V}_T)^{-1} \partial \mathcal{F}_z/\partial p_z$    
 % $$$     subplot(1,3,2);
 % $$$ % $$$     TvP.FOR_c = TvP.FOR_c+2*TvP.JSH_c;
 % $$$ % $$$     TvP.ADV_c = TvP.ADV_c+2*TvP.JSH_c;
@@ -318,7 +335,12 @@ if (doBUDGET)
 % $$$     bvars = {'TEN_c','ADV_c','FOR_c','RMIX_c','VMIX_c'};
 % $$$     for gi=1:length(bvars)
 % $$$         eval(['var = mean(TvP.' bvars{gi} ',2);']);
-% $$$         plot(var/1e15,Pe,'-','color',colors{gi},'linewidth',2);
+% $$$         if (DER)
+% $$$             var = diff(var,[],1)./dP*100/rho0/Cp/mean(Vtot);
+% $$$             plot(var/1e-9,P,'-','color',colors{gi},'linewidth',2);        
+% $$$         else 
+% $$$             plot(var/1e15,Pe,'-','color',colors{gi},'linewidth',2);
+% $$$         end
 % $$$ % $$$         eval(['var = mean(Tv.' bvars{gi} ',2);']);
 % $$$ % $$$         plot(var/1e15,Te,':','color',colors{gi},'linewidth',2);
 % $$$         hold on;
@@ -327,23 +349,45 @@ if (doBUDGET)
 % $$$     set(gca,'ydir','reverse');
 % $$$     ylim([0 100]);
 % $$$     set(gca,'yticklabel',[]);
-% $$$     xlabel('Cold-to-warm Diathermal heat transport (PW)');
-% $$$     legend('$\partial\mathcal{H}_\Theta/\partial t$','$\mathcal{M}_\Theta^{numerical}$','$\mathcal{F}_\Theta$',...
+% $$$     if (~DER)
+% $$$         xlabel('Cold-to-warm Diathermal heat transport (PW)');
+% $$$         legend('$\partial\mathcal{H}_\Theta/\partial t$','$\mathcal{M}_\Theta^{numerical}$','$\mathcal{F}_\Theta$',...
 % $$$            '$\mathcal{M}_\Theta^{neutral}$','$\mathcal{M}_\Theta^{vertical}$');
+% $$$     else
+% $$$         xlabel('Temperature Tendency ($10^{-9}$ $^\circ$Cs $^{-1}$)');
+% $$$         legend('$\partial\mathcal{\Theta}_\Theta/\partial t$', ...
+% $$$                '$\frac{100}{\rho_0C_p\mathcal{V}_T}\partial\mathcal{M}_\Theta^{numerical}/\partial p_\Theta$',...
+% $$$                '$\frac{100}{\rho_0C_p\mathcal{V}_T}\partial\mathcal{F}_\Theta/\partial p_\Theta$',...
+% $$$                '$\frac{100}{\rho_0C_p\mathcal{V}_T}\partial\mathcal{M}_\Theta^{neutral}/\partial p_\Theta$',...
+% $$$                '$\frac{100}{\rho_0C_p\mathcal{V}_T}\partial\mathcal{M}_\Theta^{vertical}/\partial p_\Theta$');
+% $$$     end
 % $$$     set(gca,'Position',[0.3661    0.1400    0.2580    0.8150]);
 % $$$ 
 % $$$     subplot(1,3,3);
 % $$$     bvars = {'TEN_c','ADV_c','FOR_c','RMIX_c'};
 % $$$     for gi=1:length(bvars)
 % $$$         eval(['var = mean(YvP.' bvars{gi} ',2);']);
-% $$$         plot(var/1e15,Pe,'-','color',colors{gi},'linewidth',2);
+% $$$         if (DER)
+% $$$             var = diff(var,[],1)./dP*100/rho0/Cp/mean(Vtot);
+% $$$             plot(var/1e-9,P,'-','color',colors{gi},'linewidth',2);        
+% $$$         else 
+% $$$             plot(var/1e15,Pe,'-','color',colors{gi},'linewidth',2);
+% $$$         end
 % $$$         hold on;
 % $$$     end
 % $$$     plot([0 0],[0 100],'--k');
 % $$$     ylim([0 100]);
-% $$$     xlabel('Southward Meridional heat transport (PW)');
-% $$$     legend('$\partial\mathcal{H}_\phi/\partial t$','$\mathcal{A}_\phi^{advective}$','$\mathcal{F}_\phi$',...
-% $$$            '$\mathcal{A}_\phi^{diffusive}$');
+% $$$     if (~DER)
+% $$$         xlabel('Southward Meridional heat transport (PW)');
+% $$$         legend('$\partial\mathcal{H}_\phi/\partial t$','$\mathcal{A}_\phi^{advective}$','$\mathcal{F}_\phi$',...
+% $$$                '$\mathcal{A}_\phi^{diffusive}$');
+% $$$     else
+% $$$         xlabel('Temperature Tendency ($10^{-9}$ $^\circ$Cs $^{-1}$)');
+% $$$         legend('$\partial\mathcal{\Theta}_\phi/\partial t$', ...
+% $$$                '$\frac{100}{\rho_0C_p\mathcal{V}_T}\partial\mathcal{A}_\phi^{advective}/\partial p_\phi$',...
+% $$$                '$\frac{100}{\rho_0C_p\mathcal{V}_T}\partial\mathcal{F}_\phi/\partial p_\phi$',...
+% $$$                '$\frac{100}{\rho_0C_p\mathcal{V}_T}\partial\mathcal{M}_\phi^{diffusive}/\partial p_\phi$');
+% $$$     end
 % $$$     set(gca,'Position',[0.7    0.1400    0.2580    0.8150]);
 
     % Time-integrate budget terms:
