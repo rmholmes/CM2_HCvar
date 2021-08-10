@@ -3,9 +3,10 @@
 base = '/scratch/e14/rmh561/access-cm2/HCvar/';
 name = 'PIcontrolTb05_';
 Tyz = 0;
-MOCyz = 1;
+MOCyz = 0;
+TAU = 1;
 
-if (~Tyz & ~MOCyz)
+if (~Tyz & ~MOCyz & ~TAU)
 
 files = dir([base 'CM2_' name '_*.mat']);
 
@@ -121,5 +122,37 @@ end
 clear next files MOCyzfields fname fi vi;
 
 save([base 'CM2_' name '_MOCyz_ALL.mat']);
+
+elseif (TAU)
+
+files = dir([base 'CM2_' name '_*_taux.mat']);
+
+% Fix order:
+nums = [];
+for fi=1:length(files)
+    fname = files(fi).name;
+    num = str2num(fname(end-16:end-9));
+    nums = cat(1,nums,num);
+end
+
+nums = sort(nums);
+ 
+% taux collate:
+load(sprintf([base 'CM2_' name '_%08d_taux.mat'],nums(1)));
+tauxfields = fieldnames(tauxS);
+
+for fi = 2:length(nums)
+    fname = sprintf([base 'CM2_' name '_%08d_taux.mat'],nums(fi))
+    next = load(fname);
+
+    for vi = 1:length(tauxfields)
+        eval(['tauxS.' tauxfields{vi} ' = cat(2,tauxS.' tauxfields{vi} ...
+              ',next.tauxS.' tauxfields{vi} ');']);
+    end
+end
+
+clear next files tauxfields fname fi vi;
+
+save([base 'CM2_' name '_taux_ALL.mat']);
 
 end

@@ -9,7 +9,8 @@
 dT = 0.05; % temperature grid size.
 
 Tyz = 0; % Only do T(y,z).
-MOCyz = 1; % Only do MOC(y,z).
+MOCyz = 0; % Only do MOC(y,z).
+TAU = 1; % Only do wind stress.
 
 %%%% Grid (time-constant) and time info:
 
@@ -67,13 +68,21 @@ time = ncread(fname,'time');
 DT_A = ncread(fname,'average_DT')*86400;
 tL = length(time);
 
-if (~Tyz)
+if (~Tyz & ~MOCyz & ~TAU)
 % Save grid info (doesn't vary with time):
 save(oname,'Cp','rho0','dT','Te','T','TL',...
      'xL','yL','zL','Z','Ze','zL','A', ...
      'latv','latv_edges','time','DT_A','tL');
 end
 
+if (TAU)
+%%%% Zonal wind stress only:
+
+    tauxS.tau_x = squeeze(nanmean(ncread(fname,'tau_x'),1));
+    tauname = [oname(1:end-4) '_taux.mat'];
+    save(tauname,'tauxS');
+    
+else
 %%%% Load processing variables:
 temp = ncread(fname,'temp');
 temp(~mask) = NaN;
@@ -235,3 +244,4 @@ save(oname,'Tv','Zv','Yv','-append');
 
 end
 
+end

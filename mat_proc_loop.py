@@ -41,7 +41,7 @@ dates = sorted(dates,key=lambda x: int(x))
 msk = ''
 
 # Split into sets of 600 runs for PI control (ss is 0,1):
-ss = 1
+ss = 0
 dates = dates[ss*600:ss*600+600]
 # dates = ['11500630']
 # dates = ['19640630','18591231']
