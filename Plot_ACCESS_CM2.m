@@ -2,7 +2,8 @@
 
 % Load specific experiments:
 clear all;
-baseMAT = '/srv/ccrc/data03/z3500785/access-cm2/';
+% $$$ baseMAT = '/srv/ccrc/data03/z3500785/access-cm2/';
+baseMAT = 'D:/DATA/access-cm2/';
 % $$$ load([baseMAT 'PIcontrolTb05PP_Hint.mat']);
 load([baseMAT 'PIcontrolTb05PP_Tint.mat']);
 % $$$ load([baseMAT 'PIcontrolTb05PP_nlP_Hint.mat']);
@@ -2201,6 +2202,103 @@ ylabel('Depth (m)');
 ylim([0 4000]);
 xlim([-80 70]);
 colormap('redblue');
+
+%%% Tyz and MOCyz plotting:
+
+% Load Tyz and MOCyz data:
+baseMAT = 'D:/DATA/access-cm2/';
+load([baseMAT 'PIcontrolTb05PP_Tint_MOC.mat']);
+load([baseMAT 'PIcontrolTb05PP_Tint_Tyz.mat']);
+
+[tmp ind1] = min(abs(P-10));[tmp ind2] = min(abs(P-30));
+ts = mean(ZvP.Tp(ind1:ind2,:),1)';
+ts = filter_field(ts,12*10+1,'-t');
+ts(isnan(ts)) = 0;
+label = '$\Theta_z(10<p_z<30,t';
+name = 'Tzp10to30_MOCfull_TyzReg_10yrSmoothing';
+
+[tmp ind1] = min(abs(P-90));[tmp ind2] = min(abs(P-100));
+ts = mean(TvP.Tp(ind1:ind2,:),1)';
+ts = filter_field(ts,12*10+1,'-t');
+ts(isnan(ts)) = 0;
+label = '$\Theta_\Theta(90<p_\Theta<100,t';
+name = 'TTp90to100_MOCfull_TyzReg_10yrSmoothing';
+
+lags = [-50:5:50];
+
+for li = 1:length(lags)
+    lag = lags(li)*12;
+
+% One time series regressions:
+figure;
+set(gcf,'defaulttextfontsize',15);
+set(gcf,'defaultaxesfontsize',15);
+set(gcf,'Position',[963    43   956   953]);
+
+ts_lagged = zeros(size(ts));
+if (lag<0)
+    ts_lagged(1:(end+lag)) = ts((-lag+1):end);
+    ts_lagged((end+lag+1):end) = 0;
+elseif (lag == 0)
+    ts_lagged = ts;
+else
+    ts_lagged(1:(lag)) = 0;
+    ts_lagged((lag+1):end) = ts(1:(end-lag));
+end
+
+MOCfull = MOC+MOCgm;
+MOCyz_reg = reshape(reshape(MOCfull,[yL*zL tL])*ts_lagged/(sum(ts_lagged.^2)),[yL zL]);
+Tyz_reg = reshape(reshape(Tyz,[yL*zL tL])*ts_lagged/(sum(ts_lagged.^2)),[yL zL]);
+
+subplot(3,2,[1 2]);
+plot(time,ts_lagged,'-k');
+hold on;
+plot(time,ts,'--k');
+legend([label '-' num2str(lag/12) ')$'],[label ')$']);
+xlim([50 600]);
+ylim([-0.03 0.03]);
+xlabel('Year');
+ylabel('$\Theta$ Anomaly $(^\circ$C)');
+
+[X,Y] = ndgrid(latv,Z);
+
+subplot(3,2,[3 4]);
+contourf(X,Y,MOCyz_reg,[-1e50 -100:1:100 1e50],'linestyle','none');
+hold on;
+[c,h] = contour(X,Y,MOC_mean+MOCgm_mean,[5:5:100],'-k');
+clabel(c,h);
+[c,h] = contour(X,Y,MOC_mean+MOCgm_mean,[-100:5:-5],'--k');
+caxis([-100 100]);
+cb = colorbar;
+ylabel(cb,'Sv/$^\circ$C','Interpreter','latex');
+set(gca,'ydir','reverse');
+% $$$ xlabel('Latitude ($^\circ$N)');
+ylabel('Depth (m)');
+ylim([0 4000]);
+xlim([-80 70]);
+
+subplot(3,2,[5 6]);
+contourf(X,Y,Tyz_reg,[-1e50 -1e22:0.25e21:1e22 1e50],'linestyle','none');
+hold on;
+[c,h] = contour(X,Y,Tyz_mean,[-2:2:40],'-k');
+clabel(c,h);
+caxis([-8 8]*1e21);
+cb = colorbar;
+ylabel(cb,'J/m/$^\circ$-latitude/$^\circ$C','Interpreter','latex');
+set(gca,'ydir','reverse');
+xlabel('Latitude ($^\circ$N)');
+ylabel('Depth (m)');
+ylim([0 4000]);
+xlim([-80 70]);
+colormap('redblue');
+
+% $$$ if (lag>0)
+    saveas(gcf,sprintf(['Decadal/' name '_%02d.png'],li));
+% $$$ else
+% $$$     saveas(gcf,['Decadal/ZTp10to30_MOC_TyzReg_10yrSmoothing_' ...
+% $$$                 num2str(-lag/12) 'lag.png']);
+% $$$ end    
+end
 
 %%%% Plot Lag Regressions:
     

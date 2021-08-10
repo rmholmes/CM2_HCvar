@@ -2,7 +2,8 @@
 
 %%%%%% OPTIONS %%%
 clear all;
-baseMAT = '/srv/ccrc/data03/z3500785/access-cm2/';
+% $$$ baseMAT = '/srv/ccrc/data03/z3500785/access-cm2/';
+baseMAT = 'D:/DATA/access-cm2/';
 
 PI_or_his = 1;
 % 1 = PI-control, 0 = historical simualtion,
@@ -12,12 +13,13 @@ PI_or_his = 1;
 % Streamline post-processing:
 doBUDGET = 1;
 doTyz = 0;
+doMOCyz = 1;
 
 if (PI_or_his == 1)
-% $$$     load([baseMAT 'CM2_PIcontrolTb05__ALL.mat']);
-% $$$     saveNAME = 'PIcontrolTb05PP_Tint.mat';
-    load([baseMAT 'CM2_PIcontrolTb05_ypm60_ALL.mat']);
-    saveNAME = 'PIcontrolTb05PP_ypm60_Tint.mat';
+    load([baseMAT 'CM2_PIcontrolTb05__ALL.mat']);
+    saveNAME = 'PIcontrolTb05PP_Tint.mat';
+% $$$     load([baseMAT 'CM2_PIcontrolTb05_ypm60_ALL.mat']);
+% $$$     saveNAME = 'PIcontrolTb05PP_ypm60_Tint.mat';
 % $$$ elseif (PI_or_his == 0)
 % $$$     load([baseMAT 'CM2_hisTb05__ALL.mat']);
 % $$$     saveNAME = 'hisPP_Tb05.mat';
@@ -681,6 +683,7 @@ end
         load([baseMAT 'CM2_PIcontrol__Tyz_ALL_HyzONLY.mat']);
         ti = yr1*12+1; % starting month
         Tyz = Tyz(:,:,ti:(ti+tL-1));     
+        Tyz_mean = mean(Tyz,3);
         
         % Detrend:
         [Tyz_cub,Tyz_cubtr] = cubfit(time,reshape(Tyz,[yL*zL tL])');
@@ -695,8 +698,54 @@ end
         end
         Tyz = Tyz - repmat(Tyz_clim,[1 1 nyrs]);
         
+        saveNAMETyz = [saveNAME(1:end-4) '_Tyz.mat'];
+        save([baseMAT saveNAMETyz],'Tyz','Tyz_clim','Tyz_mean');
     end    
-    
+
+    % MOCyz processing:
+    if (doMOCyz)
+                
+        % Load:
+        load([baseMAT 'CM2_PIcontrolTb05__MOCyz_ALL.mat']);
+        ti = yr1*12+1; % starting month
+        MOC   = MOCyzS.MOC;
+        MOCgm = MOCyzS.MOCgm;
+        clear MOCyzS;
+        MOC = cumsum(MOC(:,:,ti:(ti+tL-1)),2)/1e6/rho0;     
+        MOCgm = MOCgm(:,:,ti:(ti+tL-1))/1e6/rho0;     
+        MOC_mean = mean(MOC,3);
+        MOCgm_mean = mean(MOCgm,3);
+        
+        % Detrend:
+        [MOC_cub,MOC_cubtr] = cubfit(time,reshape(MOC,[yL*zL tL])');
+        MOC_cub = reshape(MOC_cub',[yL zL tL]);
+        MOC_cubtr = reshape(MOC_cubtr',[yL zL 4]);
+        MOC = MOC-MOC_cub;
+        
+        % Deseason:
+        MOC_clim = zeros(yL,zL,12);
+        for mi=1:12
+            MOC_clim(:,:,mi) = mean(MOC(:,:,mi:12:end),3);
+        end
+        MOC = MOC - repmat(MOC_clim,[1 1 nyrs]);
+
+        % Detrend:
+        [MOCgm_cub,MOCgm_cubtr] = cubfit(time,reshape(MOCgm,[yL*zL tL])');
+        MOCgm_cub = reshape(MOCgm_cub',[yL zL tL]);
+        MOCgm_cubtr = reshape(MOCgm_cubtr',[yL zL 4]);
+        MOCgm = MOCgm-MOCgm_cub;
+        
+        % Deseason:
+        MOCgm_clim = zeros(yL,zL,12);
+        for mi=1:12
+            MOCgm_clim(:,:,mi) = mean(MOCgm(:,:,mi:12:end),3);
+        end
+        MOCgm = MOCgm - repmat(MOCgm_clim,[1 1 nyrs]);
+
+        saveNAMEMOC = [saveNAME(1:end-4) '_MOC.mat'];
+        save([baseMAT saveNAMEMOC],'MOC','MOCgm','MOC_clim','MOCgm_clim','MOC_mean','MOCgm_mean');
+    end    
+
 if (saveMAT)
     save([baseMAT saveNAME]);
 end
