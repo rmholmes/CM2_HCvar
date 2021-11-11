@@ -10,7 +10,7 @@ dT = 0.05; % temperature grid size.
 
 Tyz = 0; % Only do T(y,z).
 MOCyz = 0; % Only do MOC(y,z).
-TAU = 1; % Only do wind stress.
+TAU = 0; % Only do wind stress.
 
 %%%% Grid (time-constant) and time info:
 

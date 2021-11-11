@@ -10,7 +10,8 @@ load([baseMAT 'PIcontrolTb05PP_Tint.mat']);
 % $$$ load([baseMAT 'PIcontrolTb05PP_nlP_Tint.mat']);
 
 %%% Percentile converter:
-Ps = [4 5 6 10 12 14 18 19 20 25 40 49 50 75 95];
+% $$$ Ps = [4 5 6 10 12 14 18 19 20 25 40 49 50 75 95];
+Ps = [0.625 1 1.5 2 2.5 10 30 90 95];%4 5 6 10 12 14 18 19 20 25 40 49 50 75 95];
 % $$$ Ps = [0.77];
 for pi=1:length(Ps)
     [tmp pii] = min(abs(P-Ps(pi)));
@@ -31,6 +32,57 @@ set(AX(2),'ylim',[-1e23 2.5e23]);
 set(AX(1),'Ycolor','r');
 ylabel(AX(1),'Global Mean SST Anomaly ($^\circ$C)'); 
 ylabel(AX(2),'Global Ocean Heat Content Anomaly (J)');
+
+%%%% Plot mean profiles and conversions:
+
+figure;
+set(gcf,'Position',[118         316        1673         635]);
+subplot(1,4,1);
+plot(Te,mean(Tv.P,2),'linewidth',2);
+set(gca,'ydir','reverse');
+ylabel('Time-mean Temperature Percentile ($\overline{p_\Theta}(\Theta)$)');
+xlabel('Temperature ($^\circ$C)');
+xlim([-3 34]);
+ylim([0 100]);
+grid on;
+text(-2,3,'(a)','FontSize',15);
+set(gca,'Position',[0.0568    0.1006    0.1809    0.8150]);
+
+subplot(1,4,2);
+plot(Ze,mean(Zv.P,2),'linewidth',2);
+set(gca,'ydir','reverse');
+ylabel('Time-mean Depth Percentile ($\overline{p_z}(z)$)');
+xlabel('Depth (m)');
+xlim([0 5000]);
+ylim([0 100]);
+grid on;
+text(4300,3,'(b)','FontSize',15);
+
+subplot(1,4,3);
+plot(latv_edges,mean(Yv.P,2),'linewidth',2);
+set(gca,'ydir','reverse');
+ylabel('Time-mean Latitude Percentile ($\overline{p_\phi}(\phi)$)');
+xlabel('Latitude ($^\circ$N)');
+xlim([-90 90]);
+ylim([0 100]);
+grid on;
+text(65,3,'(c)','FontSize',15);
+
+subplot(1,4,4);
+plot(TvP.Tp_mean,P,'-r','linewidth',2);
+hold on;
+plot(ZvP.Tp_mean,P,'-k','linewidth',2);
+plot(YvP.Tp_mean,P,'-b','linewidth',2);
+set(gca,'ydir','reverse');
+legend('$\overline{\Theta_\Theta}(p)$','$\overline{\Theta_z}(p)$', ...
+       '$\overline{\Theta_\phi}(p)$','Location','southeast');
+ylabel('Percentile');
+xlabel('Temperature ($^\circ$C)');
+grid on;
+text(2,3,'(d)','FontSize',15);
+
+
+
 
 
 %%%% Plot total heat content and fits time series:
@@ -186,7 +238,7 @@ round(his.time(ind))
 % $$$ plot(PIstd.stdYvP.Tp*2,P,'-b');
 % $$$ xlabel('2$\sigma$ variability amplitude ($^\circ$C)');
 % $$$ ylabel('Percentile');
-% $$$ legend('$\Theta(p_z)$','$\Theta(p_\Theta)$',['$\Theta(p_\' ...
+% $$$ legend('$\Theta(p)$','$\Theta(p_\Theta)$',['$\Theta(p_\' ...
 % $$$                     'phi)$']);
 % $$$ 
 % $$$ % Example time series:
@@ -224,7 +276,7 @@ if (remap_to_T)
 else
     Z_YvPar = P;
     zlim = [0 100];
-    zlab = 'Depth Percentile $p_z$';
+    zlab = 'Depth Percentile $p$';
 
     T_YvPar = P;
     tlim = zlim;
@@ -253,7 +305,7 @@ contourf(X,Y,ZvP.Tp_clim',[-10 -0.2:0.002:0.2 10],'linestyle','none');
 xlabel('Month');
 ylabel(zlab);
 ylim(zlim);
-title('ACCESS-CM2 PI-control $\Theta(p_z)$ seasonal cycle');
+title('ACCESS-CM2 PI-control $\Theta(p)$ seasonal cycle');
 caxis([-0.2 0.2]);
 colorbar;
 if (~remap_to_T);set(gca,'ydir','reverse');end;
@@ -267,7 +319,7 @@ legend('Seasonal Climatology','Anomalies');
 ylabel(zlab);
 ylim(zlim);
 xlim([0 0.3]);
-title('ACCESS-CM2 PI-control variability $\Theta(p_z)$');
+title('ACCESS-CM2 PI-control variability $\Theta(p)$');
 if (~remap_to_T);set(gca,'ydir','reverse');end;
 
 subplot(3,4,4);
@@ -276,7 +328,7 @@ xlabel('Temperature trend ($^\circ$C/year)');
 ylabel('Depth Percentile');
 ylim(zlim);
 xlim([-1.5e-3 1.5e-3]);
-title('ACCESS-CM2 PI-control linear trend $\Theta(p_z)$');
+title('ACCESS-CM2 PI-control linear trend $\Theta(p)$');
 if (~remap_to_T);set(gca,'ydir','reverse');end;
 
 subplot(3,4,5);
@@ -373,8 +425,8 @@ title('ACCESS-CM2 PI-control linear trend $\Theta(p_\phi)$');
 % Depth percentile:
 Zcxs = [-0.2 0.01 0.2];
 % $$$ Zcxs = [-1 0.05 1];
-Zlab = '$\Theta(p_z)$';
-zlim = [0 10];zlab = 'Depth Percentile $p_z$';
+Zlab = '$\Theta(p)$';
+zlim = [0 10];zlab = 'Depth Percentile $p$';
 
 figure;
 set(gcf,'Position',[1          36        1920         970]);
@@ -504,30 +556,13 @@ colormap(redblue);
 %%% Mean curves and correlation with total OHC:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Temperature anomalies only:
 figure;
-% $$$ set(gcf,'Position',[23         208        1807         716]); % No total OHC correlation
 set(gcf,'Position',[23         208        1896         716]); % total OHC correlation.
 set(gcf,'defaulttextfontsize',15);
 set(gcf,'defaultaxesfontsize',15);
-% $$$ pos1 = [0.1759    0.1030    0.2134    0.8150];
-% $$$ pos1 = [0.1759    0.1030    0.18    0.8150];
-% $$$ axs = axes('Position',pos1);
-% $$$ plot(ZvP.Tp_mean,P,'-k','linewidth',2);
-% $$$ hold on;
-% $$$ plot(TvP.Tp_mean,P,'-r','linewidth',2);
-% $$$ plot(YvP.Tp_mean,100-P,'-b','linewidth',2);
-% $$$ xlabel('Mean $\Theta$ ($^\circ$C)');
-% $$$ xlim([-2 30]);
-% $$$ legend('$\Theta_z(p_z)$','$\Theta_\Theta(p_\Theta)$','$\Theta_\phi(p_\phi)$','Location','SouthEast');
-% $$$ ylabel('Percentile');
-% $$$ ylim([0 100]);
-% $$$ set(gca,'ydir','reverse')
-% $$$ text(-1.9,2,'(a)');
 
-% $$$ pos1 = [0.4108    0.1030    0.2134    0.8150];
+%%% Temperature anomalies standard deviation:
 pos1 = [0.1759    0.1030    0.18    0.8150];
-% $$$ pos1 = [0.3808    0.1030    0.18    0.8150];
 axs = axes('Position',pos1);
 plot(std(ZvP.Tp,[],2),P,'-k','linewidth',2);
 hold on;
@@ -537,9 +572,6 @@ xlabel('Standard Deviation of $\Theta$ ($^\circ$C)');
 ylim([0 100]);
 xlim([0 0.1]);
 set(gca,'ydir','reverse');
-% $$$ set(gca,'yticklabel',[]);
-% $$$ text(0.001,2,'(a)');
-% $$$ legend('$\Theta_z(p_z)$','$\Theta_\Theta(p_\Theta)$','$\Theta_\phi(p_\phi)$','Location','SouthWest');
 
 % Averages:
 text(0.04,30,['$\overline{\sigma_z}$ = ' sprintf('%3.3f',mean(std(ZvP.Tp,[],2))) '$^\circ$C'],'color','k');
@@ -593,12 +625,8 @@ ylabel(ax4,'Latitude ($^\circ$N)');
 ylim(ax4,[0 100]);
 set(gca,'ydir','reverse');
 
-% Heat content anomalies and correlations:
-% $$$ pos1 = [0.6504    0.1030    0.2134    0.8150]);
-% $$$ pos1 = [0.3808    0.1030    0.18    0.8150];
+%%% Heat content anomalies and correlations:
 axes(axs); cla;
-% $$$ axs = axes('Position',pos1);
-% $$$ lphpf = 0; % 0= no filter, 1=low-pass filter, 2=high-pass filter
 nfilt = 12*5-1;
 Zvar = ZvP.Hp;
 Tvar = TvP.Hp;
@@ -648,7 +676,7 @@ text(0.1,40,['$\overline{\sigma_\phi}$ = ' sprintf('%3.2f',mean(std(YvP.Hp,[],2)
 TS = (OHC-mean(OHC))/std(OHC);
 
 ZvPar = ZvP.Hp;TvPar = TvP.Hp;yvar = YvP.Hp;
-Z_YvPar = P;    zlab = 'Depth Percentile $p_z$';
+Z_YvPar = P;    zlab = 'Depth Percentile $p$';
 T_YvPar = P;    tlab = 'Temperature Percentile $p_\Theta$';
 y_YvPar = P;    ylab = 'Latitude Percentile $p_\phi$';
     
@@ -698,6 +726,7 @@ yvar_lr = Ynor*TS/sqrt(sum(TS.^2))./ ...
           sqrt(sum(Ynor.^2,2));
 
 % +-60 -> full
+baseMAT = 'D:/DATA/access-cm2/';
 PM60data = load([baseMAT 'PIcontrolTb05PP_ypm60_Tint.mat'],'ZvP','TvP','YvP');
     
 Znor60 = (PM60data.ZvP.Hp-repmat(mean(PM60data.ZvP.Hp,2),[1 tL]))./ ...
@@ -758,10 +787,151 @@ xlabel('Correlation with total OHC');
 xlim([-0.45 1]);
 set(gca,'yticklabel',[]);
 ylim([0 100]);
-legend('$H_z(p_z)$','$H_\Theta(p_\Theta)$','$H_\phi(p_\phi)$','Location','SouthWest');
+legend('$H_z(p)$','$H_\Theta(p_\Theta)$','$H_\phi(p_\phi)$','Location','SouthWest');
 set(gca,'ydir','reverse')
 text(0.001,2,'(b)');
 % $$$ text(0.88,2,'(c)');
+
+%%% Linear trends:
+
+% $$$ % Testing on total OHC:
+% $$$ t1 = 1;
+% $$$ t2 = tL;
+% $$$ timean = mean(reshape(time(t1:t2),[12 (t2-t1+1)/12]),1)';
+% $$$ OHCan = squeeze(mean(reshape(OHC(t1:t2),[12 (t2-t1+1)/12]),1));
+% $$$ 
+% $$$ windows = [3:4:100];
+% $$$ trends_std = zeros(size(windows));
+% $$$ for wi = 1:length(windows)
+% $$$     trends = lintrends(timean,OHCan',windows(wi));
+% $$$     trends_std(wi) = nanstd(trends);
+% $$$ end
+% $$$ plot(windows,trends_std);
+% $$$ % Checks out. 
+
+% Calculate annual average:
+t1 = 1;
+t2 = tL;
+timean = mean(reshape(time(t1:t2),[12 (t2-t1+1)/12]),1)';
+Zvaran = squeeze(mean(reshape(ZvP.Hp(:,t1:t2)',[12 (t2-t1+1)/12 PL]),1));
+Tvaran = squeeze(mean(reshape(TvP.Hp(:,t1:t2)',[12 (t2-t1+1)/12 PL]),1));
+Yvaran = squeeze(mean(reshape(YvP.Hp(:,t1:t2)',[12 (t2-t1+1)/12 PL]),1));
+
+% Calculate trends over specified windows:
+windows = [5 15 51];
+
+Ztrends = zeros(length(windows),PL);
+Ttrends = zeros(length(windows),PL);
+Ytrends = zeros(length(windows),PL);
+
+for wi = 1:length(windows)
+    window = windows(wi)
+    for pi=1:PL
+        trends = lintrends(timean,Zvaran(:,pi),window);
+        Ztrends(wi,pi) = nanstd(trends);
+        trends = lintrends(timean,Tvaran(:,pi),window);
+        Ttrends(wi,pi) = nanstd(trends);
+        trends = lintrends(timean,Yvaran(:,pi),window);
+        Ytrends(wi,pi) = nanstd(trends);
+    end
+end
+
+%%% Plot them:
+
+figure;
+set(gcf,'Position',[23         208        1896         716]); % total OHC correlation.
+set(gcf,'defaulttextfontsize',15);
+set(gcf,'defaultaxesfontsize',15);
+
+poss = [0.1759    0.1030    0.18    0.8150; ...
+        0.3808    0.1030    0.18    0.8150; ...
+        0.586    0.1030    0.18    0.8150];
+
+
+pos1 = poss(1,:);
+axs = axes('Position',pos1);
+plot(Ztrends(1,:)/1e20,P,'-k','linewidth',2);
+hold on;
+plot(Ttrends(1,:)/1e20,P,'-r','linewidth',2);
+plot(Ytrends(1,:)/1e20,P,'-b','linewidth',2);
+xlabel(['' num2str(windows(1)) '-year trends (J/year)']);
+ylim([0 100]);
+% $$$ xlim([0 0.1]);
+set(gca,'ydir','reverse');
+
+% Add extra axes:
+ax2_pos = pos1;
+ax2_pos(1) = pos1(1)-pos1(1)/4;
+ax2_pos(3) = 0.00001;
+ax3_pos = ax2_pos;
+ax3_pos(1) = pos1(1)-1.9*pos1(1)/4;
+ax4_pos = ax2_pos;
+ax4_pos(1) = pos1(1)-3.1*pos1(1)/4;
+
+ax2 = axes('Position',ax2_pos,'XColor','r','YColor','r','FontSize',15);
+set(ax2,'FontSize',15);
+Zticks = [28 18 14 12:-2:4 3:-1:-1];
+Pticks = zeros(size(Zticks));
+for ii=1:length(Zticks)
+    Pticks(ii) = interp1(TvP.Tp_mean,P,Zticks(ii),'linear');
+end
+set(ax2,'ytick',Pticks);
+set(ax2,'yticklabel',Zticks);
+ylabel(ax2,'Temperature ($^\circ$C)');
+ylim(ax2,[0 100]);
+set(ax2,'ydir','reverse');
+
+ax3 = axes('Position',ax3_pos,'XColor','k','YColor','k','FontSize',15);
+Zticks = [0:500:4000 5000];
+Pticks = zeros(size(Zticks));
+for ii=1:length(Zticks)
+    Pticks(ii) = interp1(zofP_mean,P,-Zticks(ii),'linear');
+end
+Pticks(1) = 0;
+set(ax3,'ytick',Pticks);
+set(ax3,'yticklabel',Zticks);
+ylabel(ax3,'Depth (m)');
+ylim(ax3,[0 100]);
+set(ax3,'ydir','reverse');
+
+ax4 = axes('Position',ax4_pos,'XColor','b','YColor','b','FontSize',15);
+Zticks = [-75:15:60];
+Pticks = zeros(size(Zticks));
+for ii=1:length(Zticks)
+    Pticks(ii) = interp1(yofP_mean,P,Zticks(ii),'linear');
+end
+Pticks(1) = 0;
+set(ax4,'ytick',Pticks);
+set(ax4,'yticklabel',Zticks);
+ylabel(ax4,'Latitude ($^\circ$N)');
+ylim(ax4,[0 100]);
+set(gca,'ydir','reverse');
+
+pos1 = poss(2,:);
+axs = axes('Position',pos1);
+plot(Ztrends(2,:)/1e20,P,'-k','linewidth',2);
+hold on;
+plot(Ttrends(2,:)/1e20,P,'-r','linewidth',2);
+plot(Ytrends(2,:)/1e20,P,'-b','linewidth',2);
+xlabel(['' num2str(windows(2)) '-year trends (J/year)']);
+ylim([0 100]);
+% $$$ xlim([0 0.1]);
+set(gca,'ydir','reverse');
+
+pos1 = poss(3,:);
+axs = axes('Position',pos1);
+plot(Ztrends(3,:)/1e20,P,'-k','linewidth',2);
+hold on;
+plot(Ttrends(3,:)/1e20,P,'-r','linewidth',2);
+plot(Ytrends(3,:)/1e20,P,'-b','linewidth',2);
+xlabel(['' num2str(windows(3)) '-year trends (J/year)']);
+ylim([0 100]);
+% $$$ xlim([0 0.1]);
+set(gca,'ydir','reverse');
+
+
+
+
 
 %%%%%% Plot all anomalies P-t:  %%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -784,7 +954,7 @@ if (remap_to_T)
 else
     Z_YvPar = P;
     zlim = [0 100];
-    zlab = 'Depth Percentile $p_z$';
+    zlab = 'Depth Percentile $p$';
 
     T_YvPar = P;
     tlim = zlim;
@@ -800,7 +970,7 @@ end
 % $$$ if (plot_H)
 % $$$     ZvPar = ZvP.Hp;
 % $$$     Zcxs = [-0.5e23 1e21 0.5e23];
-% $$$     Zlab = '$H(p_z)$';
+% $$$     Zlab = '$H(p)$';
 % $$$ 
 % $$$     TvPar = TvP.Hp;
 % $$$     Tcxs = [-0.5e23 1e21 0.5e23];
@@ -813,7 +983,7 @@ end
 ZvPar = ZvP.Tp;TvPar = TvP.Tp;yvar = YvP.Tp;
 Zcxs = [-0.06 0.002 0.06]; % PI control anomalies
 % $$$ Zcxs = [-0.1501 0.005 0.15]; % historical anomalies
-Zlab = '$\Theta_z(p_z)$';
+Zlab = '$\Theta_z(p)$';
 Tcxs = Zcxs;
 Tlab = '$\Theta_\Theta(p_\Theta)$';
 ycxs = Zcxs;
@@ -958,6 +1128,10 @@ if (~remap_to_T)
     ylim(ax2,yylim);
 end
 
+EqP = interp1(yofP_mean,P,0,'linear');
+hold on;
+plot([50 600],[EqP EqP],'--k');
+
 % Inset zoom plots:
 ZvPar = ZvP.Tp;TvPar = TvP.Tp;yvar = YvP.Tp;
 Zcxs = [-0.2 0.01 0.2];Tcxs = Zcxs;ycxs = Zcxs;
@@ -1048,7 +1222,7 @@ if (~remap_to_T)
     ax2 = axes('Position',ax1_pos,...
                'Color','none');
     set(ax2,'FontSize',15);
-    Zticks = [30 20 14 12];
+    Zticks = [28 20 14 12];
     Pticks = zeros(size(Zticks));
     for ii=1:length(Zticks)
         Pticks(ii) = interp1(TvP.Tp_mean,P,Zticks(ii),'linear');
@@ -1066,11 +1240,17 @@ v = yvar(:,t1:t2)';
 axes3i = axes('Position',[0.63    0.135    0.2    0.12]);
 axes(axes3i);
 contourf(X,Y,v,[-1e50 ycxs(1):ycxs(2):ycxs(3) 1e50],'linestyle','none');
+
 caxis([ycxs(1) ycxs(3)]);
 ylim(yylim);
 xlim(xlims);
 set(gca,'xtick',[xlims(1) mean(xlims) xlims(2)]);
 cb = colorbar;
+
+EqP = interp1(yofP_mean,P,0,'linear');
+hold on;
+plot(xlims,[EqP EqP],'--k');
+
 set(gca,'Position',[0.63    0.135    0.2    0.12]);
 if (~remap_to_T)
     ax1=gca;
@@ -1108,7 +1288,7 @@ colormap(redblue);
 %%%%%% Plot P-t of anomalies + budget terms %%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-zlab = 'Depth Percentile $p_z$';
+zlab = 'Depth Percentile $p$';
 tlab = 'Temperature Percentile $p_\Theta$';
 ylab = 'Latitude Percentile $p_\phi$';
 
@@ -1145,7 +1325,7 @@ poss = [0.0539 0.7073 0.4 0.26; ...
 tder = 1; 
 
 % Depth percentile:
-Zlab = '$\Theta(p_z)$';
+Zlab = '$\Theta(p)$';
 if (tder)
 % $$$     Zcxs = [-2e-10 0.05e-10 2e-10];
     Zcxs = [-1e-9 0.2e-10 1e-9];
@@ -1395,7 +1575,7 @@ end
 % $$$ vars = {'FORpVMIXp','ADVpVMIXp','MIXp','FORpMIXp','ADVpFORp'};
 % $$$ tder = [1 1 1 1 1 1 1 1 1]; % Take time-derivative of budget terms first
 
-tnames = {'$\Theta_\Theta(p_\Theta,t)$','$\Theta_z(p_z,t)$','$\Theta_\phi(p_\phi,t)$'};
+tnames = {'$\Theta_\Theta(p_\Theta,t)$','$\Theta_z(p,t)$','$\Theta_\phi(p_\phi,t)$'};
 tcols = {'r','k','b'};
 
 names = {{'$\partial\Theta_\Theta/\partial t$','Tendency','Numerical Mixing','Forcing','Neutral Mixing','Vertical Mixing', ...
@@ -1404,6 +1584,8 @@ names = {{'$\partial\Theta_\Theta/\partial t$','Tendency','Numerical Mixing','Fo
          'FOR+VMIX','ADV+VMIX','MIX','FOR+MIX','ADV+FOR'}, ...
          {'$\partial\Theta_\phi/\partial t$','Tendency','Advection','Forcing','Neutral Mixing','Vertical Mixing', ...
          'FOR+VMIX','ADV+VMIX','MIX','FOR+MIX','ADV+FOR'}};
+
+vars = {'ADVp'};
 
 for ti=1:length(typs)
     for vi=1:length(vars)
@@ -1441,6 +1623,12 @@ poss = [0.07    0.55    0.42    0.4; ...
 pranges = [0 100;
            0 100;
            0 100;]
+% $$$ pranges = [90 100;
+% $$$            90 100;
+% $$$            90 100;]
+pranges = [0 95;
+           0 95;
+           0 95;]
 prangesi = pranges;
 for pi=1:length(pranges(:))
     [tmp prangesi(pi)] = min(abs(P-pranges(pi)));
@@ -1593,7 +1781,7 @@ xlabel('$\sigma$ hist-NAT ($^\circ$C)');
 xlim([0 0.1]);
 ylabel('Percentile');
 ylim([0 100]);
-legend('$\Theta_z(p_z)$','$\Theta_\Theta(p_\Theta)$','$\Theta_\phi(p_\phi)$','Location','SouthEast');
+legend('$\Theta_z(p)$','$\Theta_\Theta(p_\Theta)$','$\Theta_\phi(p_\phi)$','Location','SouthEast');
 set(gca,'ydir','reverse')
 pos1 = [0.1759    0.1030    0.2134    0.8150];
 set(gca,'Position',pos1);
@@ -1678,7 +1866,7 @@ text(1921,2,'(b)');
 % $$$     caxis([-4.5 -1]);
 % $$$     ylabel(zlab);
 % $$$     title(['Multi-taper power spectra of ACCESS-CM2 PI-control ' ...
-% $$$            '$\Theta(p_z)$ anomalies ($^\circ$C$^2$/year)']);
+% $$$            '$\Theta(p)$ anomalies ($^\circ$C$^2$/year)']);
 % $$$     cb = colorbar;
 % $$$     set(cb,'ytick',[-4:1:-1]);
 % $$$     set(cb,'yticklabel',10.^[-4:1:-1]);
@@ -1800,7 +1988,7 @@ text(1921,2,'(b)');
 % $$$     set(gca,'xtick',1./xlab);
 % $$$     set(gca,'xticklabel',xlab);
 % $$$     xlabel('Period (years)');
-% $$$     legend('$\Theta(p_z)$','$\Theta(p_\Theta)$','$\Theta(p_\phi)$');
+% $$$     legend('$\Theta(p)$','$\Theta(p_\Theta)$','$\Theta(p_\phi)$');
 % $$$     ylabel('Multi-taper power spectra ($^\circ$C$^2$/year)');
 % $$$     title('ACCESS-CM2 PI-control Percentile-Averaged Spectra');
 % $$$ 
@@ -2158,7 +2346,7 @@ subplot(5,1,1);
 plot(time,ts1,'-k');
 hold on;
 plot(time,ts2,'-r');
-legend('$\overline{\Theta_z(10\%<p_z<30\%,t)}$','$\overline{\Theta_\Theta(10\%<p_\Theta<30\%,t)}$');
+legend('$\overline{\Theta_z(10\%<p<30\%,t)}$','$\overline{\Theta_\Theta(10\%<p_\Theta<30\%,t)}$');
 hold on;
 plot([225 225],[-0.02 0.02],'--k');
 plot([275 275],[-0.02 0.02],'--k');
@@ -2214,17 +2402,26 @@ load([baseMAT 'PIcontrolTb05PP_Tint_Tyz.mat']);
 ts = mean(ZvP.Tp(ind1:ind2,:),1)';
 ts = filter_field(ts,12*10+1,'-t');
 ts(isnan(ts)) = 0;
-label = '$\Theta_z(10<p_z<30,t';
+label = '$\Theta_z(10<p<30,t';
 name = 'Tzp10to30_MOCfull_TyzReg_10yrSmoothing';
 
 [tmp ind1] = min(abs(P-90));[tmp ind2] = min(abs(P-100));
 ts = mean(TvP.Tp(ind1:ind2,:),1)';
-ts = filter_field(ts,12*10+1,'-t');
+ts = filter_field(ts,12*1+1,'-t'); % Filtering
 ts(isnan(ts)) = 0;
 label = '$\Theta_\Theta(90<p_\Theta<100,t';
 name = 'TTp90to100_MOCfull_TyzReg_10yrSmoothing';
 
-lags = [-50:5:50];
+[tmp ind1] = min(abs(P-95));[tmp ind2] = min(abs(P-100));
+ts = mean(YvP.Tp(ind1:ind2,:),1)';
+ts = filter_field(ts,1*12+1,'-t');
+ts(isnan(ts)) = 0;
+label = '$\Theta_\phi(95<p<100,t';
+name = 'Tzp90to100_MOCfull_TyzReg';
+
+% $$$ lags = [-100:10:100];
+% $$$ lags = [0]
+lags = [-8:1:8];
 
 for li = 1:length(lags)
     lag = lags(li)*12;
@@ -2246,59 +2443,176 @@ else
     ts_lagged((lag+1):end) = ts(1:(end-lag));
 end
 
+ts_norm = (ts_lagged-nanmean(ts_lagged))/std(ts_lagged);
+
 MOCfull = MOC+MOCgm;
-MOCyz_reg = reshape(reshape(MOCfull,[yL*zL tL])*ts_lagged/(sum(ts_lagged.^2)),[yL zL]);
-Tyz_reg = reshape(reshape(Tyz,[yL*zL tL])*ts_lagged/(sum(ts_lagged.^2)),[yL zL]);
+MOCyz_reg = reshape(reshape(MOCfull,[yL*zL tL])*ts_norm/(sum(ts_norm.^2)),[yL zL]);
+Tyz_reg = reshape(reshape(Tyz,[yL*zL tL])*ts_norm/(sum(ts_norm.^2)),[yL zL]);
 
 subplot(3,2,[1 2]);
 plot(time,ts_lagged,'-k');
 hold on;
 plot(time,ts,'--k');
 legend([label '-' num2str(lag/12) ')$'],[label ')$']);
+% $$$ legend([label ')$']);
 xlim([50 600]);
 ylim([-0.03 0.03]);
 xlabel('Year');
-ylabel('$\Theta$ Anomaly $(^\circ$C)');
+ylabel('Temperature $(^\circ$C)');
+grid on;
+text(53,0.026,'(a)');
+set(gca,'Position',[0.0973 0.7135 0.7464 0.2157]);
 
 [X,Y] = ndgrid(latv,Z);
 
-subplot(3,2,[3 4]);
-contourf(X,Y,MOCyz_reg,[-1e50 -100:1:100 1e50],'linestyle','none');
-hold on;
-[c,h] = contour(X,Y,MOC_mean+MOCgm_mean,[5:5:100],'-k');
-clabel(c,h);
-[c,h] = contour(X,Y,MOC_mean+MOCgm_mean,[-100:5:-5],'--k');
-caxis([-100 100]);
-cb = colorbar;
-ylabel(cb,'Sv/$^\circ$C','Interpreter','latex');
-set(gca,'ydir','reverse');
-% $$$ xlabel('Latitude ($^\circ$N)');
-ylabel('Depth (m)');
-ylim([0 4000]);
-xlim([-80 70]);
-
 subplot(3,2,[5 6]);
-contourf(X,Y,Tyz_reg,[-1e50 -1e22:0.25e21:1e22 1e50],'linestyle','none');
+contourf(X,Y,Tyz_reg,[-1e50 -0.5e20:0.25e19:0.5e20 1e50],'linestyle','none');
 hold on;
 [c,h] = contour(X,Y,Tyz_mean,[-2:2:40],'-k');
 clabel(c,h);
-caxis([-8 8]*1e21);
+caxis([-0.5 0.5]*1e20);
 cb = colorbar;
-ylabel(cb,'J/m/$^\circ$-latitude/$^\circ$C','Interpreter','latex');
+ylabel(cb,'J/m/$^\circ$-latitude/$\sigma$','Interpreter','latex');
 set(gca,'ydir','reverse');
-xlabel('Latitude ($^\circ$N)');
+% $$$ xlabel('Latitude ($^\circ$N)');
+set(gca,'xticklabel',[]);
 ylabel('Depth (m)');
 ylim([0 4000]);
 xlim([-80 70]);
 colormap('redblue');
+text(-79,200,'(b)');
+set(gca,'Position',[0.0973 0.3788 0.7464 0.2739]);
+
+subplot(3,2,[5 6]);
+% $$$ contourf(X,Y,MOCyz_reg,[-1e50 -0.5:0.025:0.5 1e50],'linestyle','none');
+contourf(X,Y,MOCyz_reg,[-1e50 -1:0.05:1 1e50],'linestyle','none');
+hold on;
+[c,h] = contour(X,Y,MOC_mean+MOCgm_mean,[3:3:100],'-k');
+clabel(c,h);
+[c,h] = contour(X,Y,MOC_mean+MOCgm_mean,[-99:3:-3],'--k');
+clabel(c,h);
+caxis([-1 1]);
+cb = colorbar;
+ylabel(cb,'Sv/$\sigma$','Interpreter','latex');
+set(gca,'ydir','reverse');
+xlabel('Latitude ($^\circ$N)');
+% $$$ set(gca,'xticklabel',[]);
+ylabel('Depth (m)');
+ylim([0 4000]);
+xlim([-80 70]);
+text(-79,200,'(c)');
+set(gca,'Position',[0.0973 0.0703 0.7464 0.2739]);
 
 % $$$ if (lag>0)
-    saveas(gcf,sprintf(['Decadal/' name '_%02d.png'],li));
+% $$$     saveas(gcf,sprintf(['Decadal/' name '_%02d.png'],li));
 % $$$ else
 % $$$     saveas(gcf,['Decadal/ZTp10to30_MOC_TyzReg_10yrSmoothing_' ...
 % $$$                 num2str(-lag/12) 'lag.png']);
 % $$$ end    
 end
+
+%% Tau_x:
+
+baseMAT = 'D:/DATA/access-cm2/';
+load([baseMAT 'PIcontrolTb05PP_Tint_taux.mat']);
+
+% decadal tau_x totals:
+taux_full = taux+repmat(taux_mean,[1 tL]);
+taux_dectot = filter_field(taux+repmat(taux_mean,[1 tL]),12*10+1,'-t');
+
+taux_max = zeros(tL,1);
+taux_maxlat = zeros(tL,1);
+
+[tmp maxind] = min(abs(latv+30));
+
+for ti=1:tL
+    [taux_max(ti) ind] = max(taux_full(1:maxind,ti));
+    taux_maxlat(ti) = latv(ind);
+end
+
+[tmp ind1] = min(abs(latv+40));
+[tmp ind2] = min(abs(latv+60));
+taux_int = nanmean(taux_full(ind2:ind1,:),1);
+taux_int = filter_field(taux_int,12*10+1,'-t');
+taux_int_norm = (taux_int-nanmean(taux_int))/nanstd(taux_int);
+ts_norm = (ts-nanmean(ts))/std(ts);
+
+%%% Lag correlations:
+
+[tmp ind1] = min(abs(P-10));[tmp ind2] = min(abs(P-30));
+ts1 = mean(ZvP.Tp(ind1:ind2,:),1)';
+ts1 = filter_field(ts1,12*10+1,'-t');
+ts1(isnan(ts1)) = 0;
+
+[tmp ind1] = min(abs(P-90));[tmp ind2] = min(abs(P-100));
+ts2 = mean(TvP.Tp(ind1:ind2,:),1)';
+ts2 = filter_field(ts2,12*10+1,'-t'); % Filtering
+ts2(isnan(ts2)) = 0;
+
+lags = [-100:1:100];
+cor = zeros(size(lags));
+
+for li = 1:length(lags)
+    lag = lags(li)*12;
+
+    ts_lagged = zeros(size(ts1));
+    if (lag<0)
+        ts_lagged(1:(end+lag)) = ts1((-lag+1):end);
+        ts_lagged((end+lag+1):end) = 0;
+    elseif (lag == 0)
+        ts_lagged = ts1;
+    else
+        ts_lagged(1:(lag)) = 0;
+        ts_lagged((lag+1):end) = ts1(1:(end-lag));
+    end
+
+    cor(li) = corr(ts_lagged,ts2);
+end
+
+[max_cor, max_lag] = max(cor);
+[min_cor, min_lag] = min(cor);
+max_lag = lags(max_lag);
+min_lag = lags(min_lag);
+
+ts_max = zeros(size(ts1));
+lag = max_lag*12;
+if (lag<0)
+    ts_max(1:(end+lag)) = ts1((-lag+1):end);
+    ts_max((end+lag+1):end) = 0;
+elseif (lag == 0)
+    ts_max = ts1;
+else
+    ts_max(1:(lag)) = 0;
+    ts_max((lag+1):end) = ts1(1:(end-lag));
+end
+
+ts_min = zeros(size(ts1));
+lag = min_lag*12;
+if (lag<0)
+    ts_min(1:(end+lag)) = ts1((-lag+1):end);
+    ts_min((end+lag+1):end) = 0;
+elseif (lag == 0)
+    ts_min = ts1;
+else
+    ts_min(1:(lag)) = 0;
+    ts_min((lag+1):end) = ts1(1:(end-lag));
+end
+
+figure;
+subplot(2,1,1);
+plot(time,ts1);
+hold on;
+plot(time,ts2,'-r');
+plot(time,ts_max,'--k');
+plot(time,ts_min,':k');
+legend('$\Theta_z(10<p<30,t)$','$\Theta_\Theta(90<p<1000,t)$', ...
+       ['$\Theta_z(10<p<30,t-%03d)$',max_lag), ...
+       sprintf('$\Theta_z(10<p<30,t-%03d)$',min_lag));
+subplot(2,1,2);
+plot(lags,cor);
+xlabel('Lag (years)');
+ylabel('Correlation');
+
 
 %%%% Plot Lag Regressions:
     
@@ -2361,10 +2675,20 @@ end
     lags = [-12*2:1:12*2]; %months lag
     zlim = [0 7]; tlim = [0 7]; yylim = [40 85];
 
+% $$$     % 10 to 30 Theta_z:
+% $$$     [tmp ind1] = min(abs(P-10));[tmp ind2] = min(abs(P-30));
+% $$$     ts = mean(TvP.Tp(ind1:ind2,:),1)';
+% $$$     ts = filter_field(ts,12*10+1,'-t');
+% $$$     ts(isnan(ts)) = 0;
+% $$$     ts = ts/std(ts);
+% $$$     label = '$\Theta_z(10<p<30,t)';
+% $$$     lags = [-12*50:12:12*50]; %months lag
+% $$$     zlim = [0 50]; tlim = [0 50]; yylim = [0 100];
+
 % Variables:
-    Z_YvPar = P;    zlab = 'Depth Percentile $p_z$';
-    T_YvPar = P;    tlab = 'Temperature Percentile $p_\Theta$';
-    y_YvPar = P;    ylab = 'Latitude Percentile $p_\phi$';
+    Z_YvPar = P;    zlab = 'Depth Percentile $p$';
+    T_YvPar = P;    tlab = 'Temperature Percentile $p$';
+    y_YvPar = P;    ylab = 'Latitude Percentile $p$';
 
     vars = {'Tp','Tp','TENp','ADVp','FORp','VMIXp','RMIXp'};
     tder = [0 1 1 1 1 1 1 1 1]; % Take time-derivative of budget terms first
@@ -2415,7 +2739,7 @@ end
     end
     
     % Plot temperatures:
-    Zcxs = [-0.1 0.0025 0.1]; Tcxs = Zcxs;Ycxs=[-0.02 0.001 0.02];
+    Zcxs = [-0.08 0.0025 0.08]; Tcxs = Zcxs;Ycxs=[-0.02 0.001 0.02];
 
     figure;
     set(gcf,'Position',[3          40        1130         963]);
@@ -2425,13 +2749,17 @@ end
     subplot(3,1,1);
     [X,Y] = ndgrid(lags/12,Z_YvPar);
     contourf(X,Y,ZvP.Tp_lr',[-1e50 Zcxs(1):Zcxs(2):Zcxs(3) 1e50],'linestyle','none');
+    hold on;
+    contour(X,Y,ZvP.Tp_lr',[0.02:0.02:0.08],'-k');
+    contour(X,Y,ZvP.Tp_lr',[-0.08:0.02:-0.02],'--k');
     caxis([Zcxs(1) Zcxs(3)]);
 % $$$     xlabel('Lag (years)');
     set(gca,'xticklabel',[]);
     ylabel(zlab);
     ylim(zlim);
-    text(-1.95,6.5,['(a) $\Theta_z(p_z)$ ' label ' regression'],'BackgroundColor','w');
+    text(-1.95,6.5,['(a) $\Theta_z(p)$ ' label ' regression'],'BackgroundColor','w');
     cb = colorbar;
+    set(cb,'ytick',[-0.08:0.04:0.08]);
     ylabel(cb,'Temperature Anomaly ($^\circ$C / $\sigma$)','Interpreter','latex');
     set(gca,'Position',[0.13 0.7 0.75 0.28]);
     if (~remap_to_T)
@@ -2463,12 +2791,16 @@ end
     subplot(3,1,2);
     [X,Y] = ndgrid(lags/12,T_YvPar);
     contourf(X,Y,TvP.Tp_lr',[-1e50 Tcxs(1):Tcxs(2):Tcxs(3) 1e50],'linestyle','none');
+    hold on;
+    contour(X,Y,TvP.Tp_lr',[0.02:0.02:0.08],'-k');
+    contour(X,Y,TvP.Tp_lr',[-0.08:0.02:-0.02],'--k');
     caxis([Tcxs(1) Tcxs(3)]);
 % $$$     xlabel('Lag (years)');
     set(gca,'xticklabel',[]);
     ylabel(tlab);
-    text(-1.95,6.5,['(b) $\Theta_\Theta(p_\Theta)$ ' label ' regression']);
+    text(-1.95,6.5,['(b) $\Theta_\Theta(p)$ ' label ' regression']);
     cb = colorbar;
+    set(cb,'ytick',[-0.08:0.04:0.08]);
     ylabel(cb,'Temperature Anomaly ($^\circ$C / $\sigma$)','Interpreter','latex');
     colormap(redblue);
     ylim(tlim);
@@ -2500,11 +2832,14 @@ end
     subplot(3,1,3);
     [X,Y] = ndgrid(lags/12,y_YvPar);
     contourf(X,Y,YvP.Tp_lr',[-1e50 Ycxs(1):Ycxs(2):Ycxs(3) 1e50],'linestyle','none');
+    hold on;
+    contour(X,Y,YvP.Tp_lr',[0.02:0.02:0.08],'-k');
+    contour(X,Y,YvP.Tp_lr',[-0.08:0.02:-0.02],'--k');
     caxis([Ycxs(1) Ycxs(3)]);
     xlabel('Lag (years)');
     ylabel(ylab);
     ylim(yylim);
-    text(-1.95,45,['(b) $\Theta_\phi(p_\phi)$ ' label ' regression']);
+    text(-1.95,45,['(b) $\Theta_\phi(p)$ ' label ' regression']);
     cb = colorbar;
     ylabel(cb,'Temperature Anomaly ($^\circ$C / $\sigma$)','Interpreter','latex');
     set(gca,'Position',[0.13 0.07 0.75 0.28]);
@@ -2528,28 +2863,30 @@ end
         ylabel(ax2,'Latitude ($^\circ$N)');
         ylim(ax2,yylim);
     end
-
+    
     % Plot budget terms:
-% $$$     vars = {'Tp','TENp','ADVp','FORp','VMIXp','RMIXp'};
-% $$$     names = {'d$\Theta$/dt','Tendency','Numerical Mixing','Forcing','Vertical Mixing','Neutral Mixing'};
-% $$$     names = {'d$\Theta$/dt','Tendency','Advection','Forcing','Vertical Mixing','Neutral Mixing'};
+    vars = {'Tp','TENp','ADVp','FORp','VMIXp','RMIXp'};
+    names = {'d$\Theta$/dt','Tendency','Numerical Mixing','Forcing','Vertical Mixing','Neutral Mixing'};
+    names = {'d$\Theta$/dt','Tendency','Advection','Forcing','Vertical Mixing','Neutral Mixing'};
 
-    vars = {'FORp','VMIXp','ADVp'};
-    names = {'Surface Forcing','Vertical Mixing','Advection'};
-    names = {'Surface Forcing','Vertical Mixing','Numerical Mixing'};
-    txtlabs = {'(a)','(b)','(c)','(d)','(e)','(f)'};
+% $$$     vars = {'FORp','VMIXp','ADVp'};
+% $$$     names = {'Surface Forcing','Vertical Mixing','Advection'};
+% $$$     names = {'Surface Forcing','Vertical Mixing','Numerical Mixing'};
+% $$$     txtlabs = {'(a)','(b)','(c)','(d)','(e)','(f)'};
     
     figure;
     set(gcf,'Position',[1          36        1920         970]);
     set(gcf,'defaulttextfontsize',15);
     set(gcf,'defaultaxesfontsize',15);
 
-    Zcxs = [-5e-9 1e-10 5e-9];
+% $$$     Zcxs = [-5e-9 1e-10 5e-9];
+% $$$     Zcxs = [-1e-10 0.5e-11 1e-10];
+    Zcxs = [-0.25e-10 0.1e-11 0.25e-10];
     [X,Y] = ndgrid(lags/12,Z_YvPar);
     for vi=1:length(vars)
         eval(['var = ZvP.' vars{vi} 'd_lr;']);
-% $$$         subplot(3,2,1);
-        subplot(3,2,2*vi-1);
+        subplot(3,2,vi);
+% $$$         subplot(3,2,2*vi-1);
         contourf(X,Y,var',[-1e50 Zcxs(1):Zcxs(2):Zcxs(3) 1e50],'linestyle','none');
         caxis([Zcxs(1) Zcxs(3)]);
         xlabel('Lag (years)');
@@ -2557,7 +2894,8 @@ end
         ylabel(zlab);
         ylim(zlim);
 % $$$         text(-1.95,6.5,[names{vi} ' ' label ' regression'],'BackgroundColor','w');
-        text(-1.95,6.5,[txtlabs{vi} ' ' names{vi}],'BackgroundColor','w');
+% $$$         text(-1.95,6.5,[txtlabs{vi} ' ' names{vi}],'BackgroundColor','w');
+        text(-49,6.5,[txtlabs{vi} ' ' names{vi}]);
         cb = colorbar;
         ylabel(cb,'$\Theta_z$ Tendency ($^\circ$Cs$^{-1}$ / $\sigma$)','Interpreter','latex');
         set(gca,'ydir','reverse');
@@ -2569,18 +2907,20 @@ end
     set(gcf,'defaulttextfontsize',15);
     set(gcf,'defaultaxesfontsize',15);
 
-    Tcxs = [-3e-9 0.2e-10 3e-9];
+% $$$     Tcxs = [-3e-9 0.2e-10 3e-9];
+    Tcxs = [-0.25e-10 0.1e-11 0.25e-10];
     [X,Y] = ndgrid(lags/12,T_YvPar);
     for vi=1:length(vars)
         eval(['var = TvP.' vars{vi} 'd_lr;']);
-% $$$         subplot(3,2,vi);
-        subplot(3,2,2*vi);
+        subplot(3,2,vi);
+% $$$         subplot(3,2,2*vi);
         contourf(X,Y,var',[-1e50 Tcxs(1):Tcxs(2):Tcxs(3) 1e50],'linestyle','none');
         caxis([Tcxs(1) Tcxs(3)]);
         xlabel('Lag (years)');
         ylabel(tlab);
 % $$$         text(-1.95,6.5,[names{vi} ' ' label ' regression']);
-        text(-1.95,6.5,[txtlabs{vi+3} ' ' names{vi}]);
+% $$$         text(-1.95,6.5,[txtlabs{vi+3} ' ' names{vi}]);
+        text(-49,6.5,[txtlabs{vi} ' ' names{vi}]);
         cb = colorbar;
         ylabel(cb,'$\Theta_\Theta$ Tendency ($^\circ$Cs$^{-1}$ / $\sigma$)','Interpreter','latex');
         colormap(redblue);
@@ -2619,7 +2959,7 @@ end
 % $$$     xlim([-2 34]);
 % $$$     ylabel('Surface Area Percentile');
 % $$$     ylim([0 100]);
-% $$$     title('ACCESS-CM2 PI-control mean $\Theta(p_\Theta)$');
+% $$$     title('ACCESS-CM2 PI-control mean $\Theta(p)$');
 % $$$     set(gca,'ydir','reverse')
 % $$$ 
 % $$$     subplot(2,3,2);
@@ -2628,7 +2968,7 @@ end
 % $$$     xlabel('Month');
 % $$$     ylabel(tlab);
 % $$$     ylim(tlim);
-% $$$     title('ACCESS-CM2 PI-control $\Theta(p_\Theta)$ seasonal cycle');
+% $$$     title('ACCESS-CM2 PI-control $\Theta(p)$ seasonal cycle');
 % $$$     caxis([-1 1]);
 % $$$     colorbar;
 % $$$     if (~remap_to_T);set(gca,'ydir','reverse');end;
@@ -2643,7 +2983,7 @@ end
 % $$$     ylabel(tlab);
 % $$$     ylim(tlim);
 % $$$     xlim([0 0.75]);
-% $$$     title('ACCESS-CM2 PI-control variability $\Theta(p_\Theta)$');
+% $$$     title('ACCESS-CM2 PI-control variability $\Theta(p)$');
 % $$$     if (~remap_to_T);set(gca,'ydir','reverse');end;
 % $$$ 
 % $$$     %%%%%% Plot all anomalies time series:
@@ -2710,7 +3050,7 @@ end
 % $$$     caxis([-3 -1]);
 % $$$     ylabel(tlab);
 % $$$     title(['Multi-taper power spectra of ACCESS-CM2 PI-control ' ...
-% $$$            '$\Theta(p_\Theta)$ anomalies ($^\circ$C$^2$/year)']);
+% $$$            '$\Theta(p)$ anomalies ($^\circ$C$^2$/year)']);
 % $$$     colorbar;
 % $$$     cb = colorbar;
 % $$$     set(cb,'ytick',[-4:1:-1]);

@@ -13,7 +13,8 @@ PI_or_his = 1;
 % Streamline post-processing:
 doBUDGET = 1;
 doTyz = 0;
-doMOCyz = 1;
+doMOCyz = 0;
+doTAU = 0;
 
 if (PI_or_his == 1)
     load([baseMAT 'CM2_PIcontrolTb05__ALL.mat']);
@@ -205,6 +206,24 @@ Tv.Pa  = 100*Tv.A_c./repmat(Atot',[TL+1 1]);
 
 NEWold = 0;
 
+% Binning issue notes:
+% - Binning H rather than T is worse in temperature, but similar in
+%   depth and latitude. This is with linear %-bins. However, with
+%   non-linear %-bins based exactly on the mean T volume profile H is
+%   only a bit worse than T - I guess this is consistent with
+%   actually having almost exactly the right volume in each %-bin?
+% - It doesn't make sense to pick %-bins non-linear based on T 
+%   for Z and latitude?
+% - 0.05C temperature bins helps.
+% - Need high-res %-bins to resolve very warm temperatures.
+% - Part of the problem is that there are large percentile jumps for a
+%   given temperature jump. E.g. with 0.2C bins it's jumping up to 8\% per
+%   temperature bin.
+% Conclusion: For simplicity and because of the lack of an obvious
+% improvement, I'm sticking with 0.05C temperature bins and 0.25%
+% percentile bins.
+
+
 if (NEWold)
 
     %%% New approach: Interpolate HC
@@ -292,107 +311,10 @@ if (doBUDGET)
         end
     end
 
-% $$$     %%%% Pre-anomaly budget plotting:
-% $$$     colors = {'m','b','k','r',[0 0.5 0],'c'};     
-% $$$     DER = 1;
-% $$$     figure;
-% $$$     set(gcf,'Position',[1921           1        1920        1005]);
-% $$$     subplot(1,3,1);
-% $$$     bvars = {'TEN_c','ADV_c','FOR_c','RMIX_c','VMIX_c'};
-% $$$     for gi=1:length(bvars)
-% $$$         eval(['var = mean(ZvP.' bvars{gi} ',2);']);
-% $$$         if (DER)
-% $$$             var = diff(var,[],1)./dP*100/rho0/Cp/mean(Vtot);
-% $$$             plot(var/1e-9,P,'-','color',colors{gi},'linewidth',2);        
-% $$$         else 
-% $$$             plot(var/1e15,Pe,'-','color',colors{gi},'linewidth',2);
-% $$$         end
-% $$$         hold on;
-% $$$     end
-% $$$     plot([0 0],[0 100],'--k');
-% $$$     ylabel('Percentile');
-% $$$     set(gca,'ydir','reverse');
-% $$$     ylim([0 100]);
-% $$$     if (~DER)
-% $$$         xlim([-2 2]);
-% $$$         xlabel('Upward Vertical heat transport (PW)');
-% $$$         legend('$\partial\mathcal{H}_z/\partial t$','$\mathcal{A}_z$','$\mathcal{F}_z$',...
-% $$$                '$\mathcal{M}_z^{neutral}$',['$\' ...
-% $$$                             'mathcal{M}_z^{vertical}$']);
-% $$$     else
-% $$$         xlabel('Temperature Tendency ($10^{-9}$ $^\circ$Cs $^{-1}$)');
-% $$$         legend('$\partial\mathcal{\Theta}_z/\partial t$', ...
-% $$$                '$\frac{100}{\rho_0C_p\mathcal{V}_T}\partial\mathcal{A}_z/\partial p_z$',...
-% $$$                '$\frac{100}{\rho_0C_p\mathcal{V}_T}\partial\mathcal{F}_z/\partial p_z$',...
-% $$$                '$\frac{100}{\rho_0C_p\mathcal{V}_T}\partial\mathcal{M}_z^{neutral}/\partial p_z$',...
-% $$$                '$\frac{100}{\rho_0C_p\mathcal{V}_T}\partial\mathcal{M}_z^{vertical}/\partial p_z$');
-% $$$     end
-% $$$     set(gca,'Position',[0.06   0.1400    0.2580    0.8150]);
-% $$$ % $$$ $100(\rho_0 C_p \mathcal{V}_T)^{-1} \partial \mathcal{F}_z/\partial p_z$    
-% $$$     subplot(1,3,2);
-% $$$ % $$$     TvP.FOR_c = TvP.FOR_c+2*TvP.JSH_c;
-% $$$ % $$$     TvP.ADV_c = TvP.ADV_c+2*TvP.JSH_c;
-% $$$ % $$$     Tv.FOR_c = Tv.FOR_c-TvP.JSH_c;
-% $$$ % $$$     Tv.ADV_c = Tv.ADV_c-TvP.JSH_c;
-% $$$     bvars = {'TEN_c','ADV_c','FOR_c','RMIX_c','VMIX_c'};
-% $$$     for gi=1:length(bvars)
-% $$$         eval(['var = mean(TvP.' bvars{gi} ',2);']);
-% $$$         if (DER)
-% $$$             var = diff(var,[],1)./dP*100/rho0/Cp/mean(Vtot);
-% $$$             plot(var/1e-9,P,'-','color',colors{gi},'linewidth',2);        
-% $$$         else 
-% $$$             plot(var/1e15,Pe,'-','color',colors{gi},'linewidth',2);
-% $$$         end
-% $$$ % $$$         eval(['var = mean(Tv.' bvars{gi} ',2);']);
-% $$$ % $$$         plot(var/1e15,Te,':','color',colors{gi},'linewidth',2);
-% $$$         hold on;
-% $$$     end
-% $$$     plot([0 0],[0 100],'--k');
-% $$$     set(gca,'ydir','reverse');
-% $$$     ylim([0 100]);
-% $$$     set(gca,'yticklabel',[]);
-% $$$     if (~DER)
-% $$$         xlabel('Cold-to-warm Diathermal heat transport (PW)');
-% $$$         legend('$\partial\mathcal{H}_\Theta/\partial t$','$\mathcal{M}_\Theta^{numerical}$','$\mathcal{F}_\Theta$',...
-% $$$            '$\mathcal{M}_\Theta^{neutral}$','$\mathcal{M}_\Theta^{vertical}$');
-% $$$     else
-% $$$         xlabel('Temperature Tendency ($10^{-9}$ $^\circ$Cs $^{-1}$)');
-% $$$         legend('$\partial\mathcal{\Theta}_\Theta/\partial t$', ...
-% $$$                '$\frac{100}{\rho_0C_p\mathcal{V}_T}\partial\mathcal{M}_\Theta^{numerical}/\partial p_\Theta$',...
-% $$$                '$\frac{100}{\rho_0C_p\mathcal{V}_T}\partial\mathcal{F}_\Theta/\partial p_\Theta$',...
-% $$$                '$\frac{100}{\rho_0C_p\mathcal{V}_T}\partial\mathcal{M}_\Theta^{neutral}/\partial p_\Theta$',...
-% $$$                '$\frac{100}{\rho_0C_p\mathcal{V}_T}\partial\mathcal{M}_\Theta^{vertical}/\partial p_\Theta$');
-% $$$     end
-% $$$     set(gca,'Position',[0.3661    0.1400    0.2580    0.8150]);
-% $$$ 
-% $$$     subplot(1,3,3);
-% $$$     bvars = {'TEN_c','ADV_c','FOR_c','RMIX_c'};
-% $$$     for gi=1:length(bvars)
-% $$$         eval(['var = mean(YvP.' bvars{gi} ',2);']);
-% $$$         if (DER)
-% $$$             var = diff(var,[],1)./dP*100/rho0/Cp/mean(Vtot);
-% $$$             plot(var/1e-9,P,'-','color',colors{gi},'linewidth',2);        
-% $$$         else 
-% $$$             plot(var/1e15,Pe,'-','color',colors{gi},'linewidth',2);
-% $$$         end
-% $$$         hold on;
-% $$$     end
-% $$$     plot([0 0],[0 100],'--k');
-% $$$     ylim([0 100]);
-% $$$     if (~DER)
-% $$$         xlabel('Southward Meridional heat transport (PW)');
-% $$$         legend('$\partial\mathcal{H}_\phi/\partial t$','$\mathcal{A}_\phi^{advective}$','$\mathcal{F}_\phi$',...
-% $$$                '$\mathcal{A}_\phi^{diffusive}$');
-% $$$     else
-% $$$         xlabel('Temperature Tendency ($10^{-9}$ $^\circ$Cs $^{-1}$)');
-% $$$         legend('$\partial\mathcal{\Theta}_\phi/\partial t$', ...
-% $$$                '$\frac{100}{\rho_0C_p\mathcal{V}_T}\partial\mathcal{A}_\phi^{advective}/\partial p_\phi$',...
-% $$$                '$\frac{100}{\rho_0C_p\mathcal{V}_T}\partial\mathcal{F}_\phi/\partial p_\phi$',...
-% $$$                '$\frac{100}{\rho_0C_p\mathcal{V}_T}\partial\mathcal{M}_\phi^{diffusive}/\partial p_\phi$');
-% $$$     end
-% $$$     set(gca,'Position',[0.7    0.1400    0.2580    0.8150]);
+    %%%% Pre-anomaly budget plotting:
+    plot_budget_ACCESS_CM2;
 
-    % Time-integrate budget terms:
+    %%%% Time-integrate budget terms:
     for ti =1:length(typs)
         for vi=1:length(bvars)
             eval([typs{ti} 'vP.' bvars{vi} ' = cumsum(' typs{ti} ...
@@ -744,6 +666,31 @@ end
 
         saveNAMEMOC = [saveNAME(1:end-4) '_MOC.mat'];
         save([baseMAT saveNAMEMOC],'MOC','MOCgm','MOC_clim','MOCgm_clim','MOC_mean','MOCgm_mean');
+    end    
+
+    if (doTAU)
+                
+        % Load:
+        load([baseMAT 'CM2_PIcontrolTb05__taux_ALL.mat']);
+        ti = yr1*12+1; % starting month
+        taux   = tauxS.tau_x(:,ti:(ti+tL-1));
+        taux_mean = mean(taux,2);
+        
+        % Detrend:
+        [taux_cub,taux_cubtr] = cubfit(time,reshape(taux,[yL tL])');
+        taux_cub = taux_cub';
+        taux_cubtr = taux_cubtr';
+        taux = taux-taux_cub;
+        
+        % Deseason:
+        taux_clim = zeros(yL,12);
+        for mi=1:12
+            taux_clim(:,mi) = mean(taux(:,mi:12:end),2);
+        end
+        taux = taux - repmat(taux_clim,[1 nyrs]);
+
+        saveNAMEtau = [saveNAME(1:end-4) '_taux.mat'];
+        save([baseMAT saveNAMEtau],'taux','taux_mean','taux_clim','taux_cub');
     end    
 
 if (saveMAT)
