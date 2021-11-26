@@ -16,6 +16,6 @@ Plot_ACCESS_CM2.m contains the plotting code itself.
 
 plot_budget_ACCESS_CM2.m contains the plotting code for the mean state heat budgets.
 
-The raw ACCESS-CM2 data is available on NCI. Processed data is available on Zenodo **XXX Provide link**
+The raw ACCESS-CM2 data is available on NCI. Processed data is available on Zenodo at [https://dx.doi.org/10.5281/zenodo.5728574](https://dx.doi.org/10.5281/zenodo.5728574)
 
 If you have any questions, please contact me at r.holmes@sydney.edu.au
