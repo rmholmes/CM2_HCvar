@@ -1,8 +1,12 @@
-% Process heat budget terms and outputs for ACCESS-CM2 run
+% Process heat budget terms and outputs for a six-month section of an
+% ACCESS-CM2 run from the raw output on NCI. Output is saved into a
+% .mat file.
 %
 % INPUTS:
-% fname = six-month ocean_month.nc file name to process.
-% oname = output .mat file-name.
+% fname = six-month ocean_month.nc file name to process from
+% ACCESS-CM2 raw output on NCI (see
+% https://confluence.csiro.au/display/ACCESS/CMIP6+Archive+-+ACCESS-CM2). 
+% oname = output .mat file-name for this six-month block.
 % msk   = mask key
 
 % Choices:

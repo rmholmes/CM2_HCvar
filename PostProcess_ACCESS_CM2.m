@@ -1,4 +1,6 @@
-% Post-processing for HC variability project
+% Post-processing for HC variability project. This requires processed
+% (from Process_ACCESS-CM2.m) and collated (from Collate_ACCESS-CM2)
+% output .mat files.
 
 %%%%%% OPTIONS %%%
 clear all;
