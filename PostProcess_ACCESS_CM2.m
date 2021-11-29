@@ -4,7 +4,7 @@
 
 %%%%%% OPTIONS %%%
 clear all;
-baseMAT = 'D:/DATA/access-cm2/';
+baseMAT = 'C:/Users/rhol9417/data/access-cm2/';
 
 % Streamline post-processing:
 doBUDGET = 1;
@@ -144,7 +144,6 @@ Tv.Pa  = 100*Tv.A_c./repmat(Atot',[TL+1 1]);
         TvP.A_c(:,ti) =  interp1(Pun,Tv.A_c(Iun,ti),Pe,'linear');
     end
     TvP.A = diff(TvP.A_c,[],1);
-end
 
 if (doBUDGET)
     bvars = {'TEN_c','ADV_c','ADVGM_c','FOR_c','RMIX_c','VMIX_c'};

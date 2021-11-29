@@ -2,8 +2,11 @@
 
 % Load .mat data created by PostProcess_ACCESSCM2.m
 clear all;
-baseMAT = 'D:/DATA/access-cm2/';
+baseMAT = 'C:/Users/rhol9417/data/access-cm2/';
 load([baseMAT 'PIcontrolTb05PP_Tint.mat']);
+
+% For proper text labels:
+set(groot, 'defaultAxesTickLabelInterpreter','latex'); set(groot, 'defaultLegendInterpreter','latex');
 
 %%%% Plot mean profiles and conversions (Figure 2):
 
@@ -84,24 +87,8 @@ else
     ylab = 'Latitude Percentile $p_\phi$';
 end        
 
-% Choose whether to plot T or H:
-% $$$ plot_H = 0;
-% $$$ if (plot_H)
-% $$$     ZvPar = ZvP.Hp;
-% $$$     Zcxs = [-0.5e23 1e21 0.5e23];
-% $$$     Zlab = '$H(p)$';
-% $$$ 
-% $$$     TvPar = TvP.Hp;
-% $$$     Tcxs = [-0.5e23 1e21 0.5e23];
-% $$$     Tlab = '$H(p_\Theta)$';
-% $$$     
-% $$$     yvar = YvP.Hp;
-% $$$     ycxs = [-0.5e23 1e21 0.5e23];
-% $$$     Ylab = '$H(p_\phi)$';
-% $$$ else
 ZvPar = ZvP.Tp;TvPar = TvP.Tp;yvar = YvP.Tp;
 Zcxs = [-0.06 0.002 0.06]; % PI control anomalies
-% $$$ Zcxs = [-0.1501 0.005 0.15]; % historical anomalies
 Zlab = '$\Theta_z(p)$';
 Tcxs = Zcxs;
 Tlab = '$\Theta_\Theta(p_\Theta)$';
@@ -112,15 +99,6 @@ zlim = [0 100];
 tlim = [0 100];
 yylim = [0 100];
 xlims = [yr1 yr1+nyrs];
-
-% $$$ % ENSO Focus settings:
-% $$$ zlim = [0 10];
-% $$$ tlim = [0 10];
-% $$$ yylim = [40 85];
-% $$$ xlims = [300 350];
-% $$$ Zcxs = [-0.2 0.01 0.2];
-% $$$ Tcxs = [-0.2 0.01 0.2];
-% $$$ ycxs = [-0.2 0.01 0.2];
 
 [tmp t1] = min(abs(time-xlims(1)));
 [tmp t2] = min(abs(time-xlims(2)));
@@ -156,8 +134,6 @@ if (~remap_to_T)
                'Color','none');
     set(ax2,'FontSize',15);
     Zticks = [0:500:4000 5000];
-% $$$         Zticks = [0:50:800];
-% $$$         Zticks = [3000:250:5500];
     Pticks = zeros(size(Zticks));
     for ii=1:length(Zticks)
         Pticks(ii) = interp1(zofP_mean,P,-Zticks(ii),'linear');
@@ -179,7 +155,7 @@ contourf(X,Y,v,[-1e50 Tcxs(1):Tcxs(2):Tcxs(3) 1e50],'linestyle','none');
 caxis([Tcxs(1) Tcxs(3)]);
 ylim(tlim);
 xlim(xlims);
-colormap(redblue);
+colormap(hot);
 % $$$     xlabel('Year');
 set(gca,'xticklabel',[]);
 ylabel(tlab);
@@ -390,8 +366,7 @@ if (~remap_to_T)
     ylim(ax2,yylim);
 end
 
-colormap(redblue);
-
+colormap(hot);
 
 % $$$ % ENSO Time series to go with that:
 % $$$ figure;
@@ -472,6 +447,282 @@ set(ax4,'yticklabel',Zticks);
 ylabel(ax4,'Latitude ($^\circ$N)');
 ylim(ax4,[0 100]);
 set(gca,'ydir','reverse');
+
+%%%% ENSO Lag Regressions (Figures 6-7):
+   
+    % ENSO:
+    ts = CIN.N34-mean(CIN.N34);
+    ts = ts/std(ts);
+    label = 'Ni\~{n}o 3.4';
+    lags = [-12*2:1:12*2]; %months lag
+    zlim = [0 7]; tlim = [0 7]; yylim = [40 85];
+
+% Variables:
+    Z_YvPar = P;    zlab = 'Depth Percentile $p$';
+    T_YvPar = P;    tlab = 'Temperature Percentile $p$';
+    y_YvPar = P;    ylab = 'Latitude Percentile $p$';
+
+    vars = {'Tp','Tp','TENp','ADVp','FORp','VMIXp','RMIXp'};
+    tder = [0 1 1 1 1 1 1 1 1]; % Take time-derivative of budget terms first
+
+    remap_to_T = 0;
+    ll = length(lags);
+    reg_or_corr = 1; % Regression (1) or correlation (0)
+
+    % Calculate regressions:
+    for ti=1:length(typs)
+        for vi=1:length(vars)
+            vars{vi}
+            eval(['var = ' typs{ti} 'vP.' vars{vi} ';']);
+            if (tder(vi))
+                var = diff(var,[],2)./repmat(DT_A(2:end)',[length(var(:,1)) 1]);
+                var = cat(2,zeros(length(var(:,1)),1),var);
+            end
+            lg = length(var(:,1));
+            lr = zeros(lg,ll);
+            
+            for ii=1:ll
+                lag = lags(ii);
+                TS = zeros(size(ts));
+                if (lag<0)
+                    TS(1:(end+lag)) = ts((-lag+1):end);
+                    TS((end+lag+1):end) = 0;
+                elseif (lag == 0)
+                    TS = ts;
+                else
+                    TS(1:(lag)) = 0;
+                    TS((lag+1):end) = ts(1:(end-lag));
+                end
+                if (reg_or_corr)
+                    lr(:,ii) = var*TS/(sum(TS.^2));
+                else
+                    varnor = (var-repmat(mean(var,2),[1 tL]))./ ...
+                            repmat(std(var,[],2),[1 tL]);
+                    lr(:,ii) = var*TS/sqrt(sum(TS.^2))./ ...
+                        sqrt(sum(var.^2,2));
+                end
+            end
+            if (tder(vi))
+                eval([typs{ti} 'vP.' vars{vi} 'd_lr = lr;']);
+            else
+                eval([typs{ti} 'vP.' vars{vi} '_lr = lr;']);
+            end            
+        end
+    end
+    
+    % Plot temperatures:
+    Zcxs = [-0.08 0.0025 0.08]; Tcxs = Zcxs;Ycxs=[-0.02 0.001 0.02];
+
+    figure;
+    set(gcf,'Position',[3          40        1130         963]);
+    set(gcf,'defaulttextfontsize',15);
+    set(gcf,'defaultaxesfontsize',15);
+
+    subplot(3,1,1);
+    [X,Y] = ndgrid(lags/12,Z_YvPar);
+    contourf(X,Y,ZvP.Tp_lr',[-1e50 Zcxs(1):Zcxs(2):Zcxs(3) 1e50],'linestyle','none');
+    hold on;
+    contour(X,Y,ZvP.Tp_lr',[0.02:0.02:0.08],'-k');
+    contour(X,Y,ZvP.Tp_lr',[-0.08:0.02:-0.02],'--k');
+    caxis([Zcxs(1) Zcxs(3)]);
+% $$$     xlabel('Lag (years)');
+    set(gca,'xticklabel',[]);
+    ylabel(zlab);
+    ylim(zlim);
+    text(-1.95,6.5,['(a) $\Theta_z(p)$ ' label ' regression'],'BackgroundColor','w');
+    cb = colorbar;
+    set(cb,'ytick',[-0.08:0.04:0.08]);
+    ylabel(cb,'Temperature Anomaly ($^\circ$C / $\sigma$)','Interpreter','latex');
+    set(gca,'Position',[0.13 0.7 0.75 0.28]);
+    if (~remap_to_T)
+        set(gca,'ydir','reverse');
+        ax1=gca;
+        ax1_pos = ax1.Position; % position of first axes
+        ax1_pos(1) = ax1_pos(1)*0.5;
+        ax1_pos(3) = 0.00001;
+        ax2 = axes('Position',ax1_pos,...
+                   'Color','none');
+        set(ax2,'FontSize',15);
+        Zticks = [0:500:4000 5000];
+% $$$         Zticks = [0:200:2000];
+% $$$         Zticks = [0:100:800];
+        Zticks = [0:50:250];
+% $$$         Zticks = [3000:250:5500];
+        Pticks = zeros(size(Zticks));
+        for ii=1:length(Zticks)
+            Pticks(ii) = interp1(zofP_mean,P,-Zticks(ii),'linear');
+        end
+        Pticks(1) = 0;
+        set(ax2,'ytick',Pticks);
+        set(ax2,'yticklabel',Zticks);
+        ylabel(ax2,'Depth (m)');
+        ylim(ax2,zlim);
+        set(ax2,'ydir','reverse');
+    end
+
+    subplot(3,1,2);
+    [X,Y] = ndgrid(lags/12,T_YvPar);
+    contourf(X,Y,TvP.Tp_lr',[-1e50 Tcxs(1):Tcxs(2):Tcxs(3) 1e50],'linestyle','none');
+    hold on;
+    contour(X,Y,TvP.Tp_lr',[0.02:0.02:0.08],'-k');
+    contour(X,Y,TvP.Tp_lr',[-0.08:0.02:-0.02],'--k');
+    caxis([Tcxs(1) Tcxs(3)]);
+% $$$     xlabel('Lag (years)');
+    set(gca,'xticklabel',[]);
+    ylabel(tlab);
+    text(-1.95,6.5,['(b) $\Theta_\Theta(p)$ ' label ' regression']);
+    cb = colorbar;
+    set(cb,'ytick',[-0.08:0.04:0.08]);
+    ylabel(cb,'Temperature Anomaly ($^\circ$C / $\sigma$)','Interpreter','latex');
+    colormap(hot);
+    ylim(tlim);
+    set(gca,'Position',[0.13 0.38 0.75 0.28]);
+    if (~remap_to_T)
+        set(gca,'ydir','reverse');
+        ax1=gca;
+        ax1_pos = ax1.Position; % position of first axes
+        ax1_pos(1) = ax1_pos(1)*0.5;
+        ax1_pos(3) = 0.00001;
+        ax2 = axes('Position',ax1_pos,...
+                   'Color','none');
+        set(ax2,'FontSize',15);
+        Zticks = [25 20 18 16 14];
+% $$$         Zticks = [30 26 22 18:-2:10];
+% $$$         Zticks = [30 22 18 16:-2:8];
+% $$$         Zticks = [2:-0.25:-0.5 -2];
+        Pticks = zeros(size(Zticks));
+        for ii=1:length(Zticks)
+            Pticks(ii) = interp1(TvP.Tp_mean,P,Zticks(ii),'linear');
+        end
+        set(ax2,'ytick',Pticks);
+        set(ax2,'yticklabel',Zticks);
+        ylabel(ax2,'Temperature ($^\circ$C)');
+        ylim(ax2,zlim);
+        set(ax2,'ydir','reverse');
+    end
+
+    subplot(3,1,3);
+    [X,Y] = ndgrid(lags/12,y_YvPar);
+    contourf(X,Y,YvP.Tp_lr',[-1e50 Ycxs(1):Ycxs(2):Ycxs(3) 1e50],'linestyle','none');
+    hold on;
+    contour(X,Y,YvP.Tp_lr',[0.02:0.02:0.08],'-k');
+    contour(X,Y,YvP.Tp_lr',[-0.08:0.02:-0.02],'--k');
+    caxis([Ycxs(1) Ycxs(3)]);
+    xlabel('Lag (years)');
+    ylabel(ylab);
+    ylim(yylim);
+    text(-1.95,45,['(b) $\Theta_\phi(p)$ ' label ' regression']);
+    cb = colorbar;
+    ylabel(cb,'Temperature Anomaly ($^\circ$C / $\sigma$)','Interpreter','latex');
+    set(gca,'Position',[0.13 0.07 0.75 0.28]);
+    if (~remap_to_T)
+        ax1=gca;
+        ax1_pos = ax1.Position; % position of first axes
+        ax1_pos(1) = ax1_pos(1)*0.5;
+        ax1_pos(3) = 0.00001;
+        ax2 = axes('Position',ax1_pos,...
+                   'Color','none');
+        set(ax2,'FontSize',15);
+        Zticks = [-75:15:75];
+% $$$         Zticks = [-70:10:80];
+        Pticks = zeros(size(Zticks));
+        for ii=1:length(Zticks)
+            Pticks(ii) = interp1(yofP_mean,P,Zticks(ii),'linear');
+        end
+        Pticks(1) = 0;
+        set(ax2,'ytick',Pticks);
+        set(ax2,'yticklabel',Zticks);
+        ylabel(ax2,'Latitude ($^\circ$N)');
+        ylim(ax2,yylim);
+    end
+    
+    % Plot budget terms:
+    vars = {'Tp','TENp','ADVp','FORp','VMIXp','RMIXp'};
+    names = {'d$\Theta$/dt','Tendency','Numerical Mixing','Forcing','Vertical Mixing','Neutral Mixing'};
+    names = {'d$\Theta$/dt','Tendency','Advection','Forcing','Vertical Mixing','Neutral Mixing'};
+
+% $$$     vars = {'FORp','VMIXp','ADVp'};
+% $$$     names = {'Surface Forcing','Vertical Mixing','Advection'};
+% $$$     names = {'Surface Forcing','Vertical Mixing','Numerical Mixing'};
+    txtlabs = {'(a)','(b)','(c)','(d)','(e)','(f)'};
+    
+    figure;
+    set(gcf,'Position',[1          36        1920         970]);
+    set(gcf,'defaulttextfontsize',15);
+    set(gcf,'defaultaxesfontsize',15);
+
+    Zcxs = [-5e-9 1e-10 5e-9];
+% $$$     Zcxs = [-1e-10 0.5e-11 1e-10];
+% $$$     Zcxs = [-0.25e-10 0.1e-11 0.25e-10];
+    [X,Y] = ndgrid(lags/12,Z_YvPar);
+    for vi=1:length(vars)
+        eval(['var = ZvP.' vars{vi} 'd_lr;']);
+        subplot(3,2,vi);
+% $$$         subplot(3,2,2*vi-1);
+        contourf(X,Y,var',[-1e50 Zcxs(1):Zcxs(2):Zcxs(3) 1e50],'linestyle','none');
+        caxis([Zcxs(1) Zcxs(3)]);
+        xlabel('Lag (years)');
+% $$$         set(gca,'xticklabel',[]);
+        ylabel(zlab);
+        ylim(zlim);
+% $$$         text(-1.95,6.5,[names{vi} ' ' label ' regression'],'BackgroundColor','w');
+% $$$         text(-1.95,6.5,[txtlabs{vi} ' ' names{vi}],'BackgroundColor','w');
+        text(-49,6.5,[txtlabs{vi} ' ' names{vi}]);
+        cb = colorbar;
+        ylabel(cb,'$\Theta_z$ Tendency ($^\circ$Cs$^{-1}$ / $\sigma$)','Interpreter','latex');
+        set(gca,'ydir','reverse');
+    end
+        colormap(hot);
+
+    figure;
+    set(gcf,'Position',[1          36        1920         970]);
+    set(gcf,'defaulttextfontsize',15);
+    set(gcf,'defaultaxesfontsize',15);
+
+    Tcxs = [-3e-9 0.2e-10 3e-9];
+% $$$     Tcxs = [-0.25e-10 0.1e-11 0.25e-10];
+    [X,Y] = ndgrid(lags/12,T_YvPar);
+    for vi=1:length(vars)
+        eval(['var = TvP.' vars{vi} 'd_lr;']);
+        subplot(3,2,vi);
+% $$$         subplot(3,2,2*vi);
+        contourf(X,Y,var',[-1e50 Tcxs(1):Tcxs(2):Tcxs(3) 1e50],'linestyle','none');
+        caxis([Tcxs(1) Tcxs(3)]);
+        xlabel('Lag (years)');
+        ylabel(tlab);
+% $$$         text(-1.95,6.5,[names{vi} ' ' label ' regression']);
+% $$$         text(-1.95,6.5,[txtlabs{vi+3} ' ' names{vi}]);
+        text(-49,6.5,[txtlabs{vi} ' ' names{vi}]);
+        cb = colorbar;
+        ylabel(cb,'$\Theta_\Theta$ Tendency ($^\circ$Cs$^{-1}$ / $\sigma$)','Interpreter','latex');
+        colormap(hot);
+        ylim(tlim);
+        set(gca,'ydir','reverse');
+    end
+        colormap(hot);
+
+    figure;
+    set(gcf,'Position',[1          36        1920         970]);
+    set(gcf,'defaulttextfontsize',15);
+    set(gcf,'defaultaxesfontsize',15);
+
+    Ycxs = [-1e-9 1e-11 1e-9];
+    [X,Y] = ndgrid(lags/12,y_YvPar);
+    for vi=1:length(vars)
+        eval(['var = YvP.' vars{vi} 'd_lr;']);
+        subplot(3,2,vi);
+        contourf(X,Y,var',[-1e50 Ycxs(1):Ycxs(2):Ycxs(3) 1e50],'linestyle','none');
+        caxis([Ycxs(1) Ycxs(3)]);
+        xlabel('Lag (years)');
+        ylabel(ylab);
+        ylim(yylim);
+% $$$         text(-1.95,45,[names{vi} ' ' label ' regression']);
+        text(-1.95,45,names{vi});
+        cb = colorbar;
+        ylabel(cb,'$\Theta_\phi$ Tendency ($^\circ$Cs$^{-1}$ / $\sigma$)','Interpreter','latex');
+    end
+        colormap(hot);
+
 
 %%% Heat content anomalies and correlations (Figure 12):
 axes(axs); cla;
@@ -866,7 +1117,7 @@ set(gca,'xticklabel',[]);
 ylabel('Depth (m)');
 ylim([0 4000]);
 xlim([-80 70]);
-colormap('redblue');
+colormap('hot');
 text(-79,200,'(b)');
 set(gca,'Position',[0.0973 0.3788 0.7464 0.2739]);
 
@@ -1190,279 +1441,4 @@ plot(lags,cor);
 xlabel('Lag (years)');
 ylabel('Correlation');
 
-
-%%%% ENSO Lag Regressions (Figures 6-7):
-   
-    % ENSO:
-    ts = CIN.N34-mean(CIN.N34);
-    ts = ts/std(ts);
-    label = 'Ni\~{n}o 3.4';
-    lags = [-12*2:1:12*2]; %months lag
-    zlim = [0 7]; tlim = [0 7]; yylim = [40 85];
-
-% Variables:
-    Z_YvPar = P;    zlab = 'Depth Percentile $p$';
-    T_YvPar = P;    tlab = 'Temperature Percentile $p$';
-    y_YvPar = P;    ylab = 'Latitude Percentile $p$';
-
-    vars = {'Tp','Tp','TENp','ADVp','FORp','VMIXp','RMIXp'};
-    tder = [0 1 1 1 1 1 1 1 1]; % Take time-derivative of budget terms first
-
-    remap_to_T = 0;
-    ll = length(lags);
-    reg_or_corr = 1; % Regression (1) or correlation (0)
-
-    % Calculate regressions:
-    for ti=1:length(typs)
-        for vi=1:length(vars)
-            vars{vi}
-            eval(['var = ' typs{ti} 'vP.' vars{vi} ';']);
-            if (tder(vi))
-                var = diff(var,[],2)./repmat(DT_A(2:end)',[length(var(:,1)) 1]);
-                var = cat(2,zeros(length(var(:,1)),1),var);
-            end
-            lg = length(var(:,1));
-            lr = zeros(lg,ll);
-            
-            for ii=1:ll
-                lag = lags(ii);
-                TS = zeros(size(ts));
-                if (lag<0)
-                    TS(1:(end+lag)) = ts((-lag+1):end);
-                    TS((end+lag+1):end) = 0;
-                elseif (lag == 0)
-                    TS = ts;
-                else
-                    TS(1:(lag)) = 0;
-                    TS((lag+1):end) = ts(1:(end-lag));
-                end
-                if (reg_or_corr)
-                    lr(:,ii) = var*TS/(sum(TS.^2));
-                else
-                    varnor = (var-repmat(mean(var,2),[1 tL]))./ ...
-                            repmat(std(var,[],2),[1 tL]);
-                    lr(:,ii) = var*TS/sqrt(sum(TS.^2))./ ...
-                        sqrt(sum(var.^2,2));
-                end
-            end
-            if (tder(vi))
-                eval([typs{ti} 'vP.' vars{vi} 'd_lr = lr;']);
-            else
-                eval([typs{ti} 'vP.' vars{vi} '_lr = lr;']);
-            end            
-        end
-    end
-    
-    % Plot temperatures:
-    Zcxs = [-0.08 0.0025 0.08]; Tcxs = Zcxs;Ycxs=[-0.02 0.001 0.02];
-
-    figure;
-    set(gcf,'Position',[3          40        1130         963]);
-    set(gcf,'defaulttextfontsize',15);
-    set(gcf,'defaultaxesfontsize',15);
-
-    subplot(3,1,1);
-    [X,Y] = ndgrid(lags/12,Z_YvPar);
-    contourf(X,Y,ZvP.Tp_lr',[-1e50 Zcxs(1):Zcxs(2):Zcxs(3) 1e50],'linestyle','none');
-    hold on;
-    contour(X,Y,ZvP.Tp_lr',[0.02:0.02:0.08],'-k');
-    contour(X,Y,ZvP.Tp_lr',[-0.08:0.02:-0.02],'--k');
-    caxis([Zcxs(1) Zcxs(3)]);
-% $$$     xlabel('Lag (years)');
-    set(gca,'xticklabel',[]);
-    ylabel(zlab);
-    ylim(zlim);
-    text(-1.95,6.5,['(a) $\Theta_z(p)$ ' label ' regression'],'BackgroundColor','w');
-    cb = colorbar;
-    set(cb,'ytick',[-0.08:0.04:0.08]);
-    ylabel(cb,'Temperature Anomaly ($^\circ$C / $\sigma$)','Interpreter','latex');
-    set(gca,'Position',[0.13 0.7 0.75 0.28]);
-    if (~remap_to_T)
-        set(gca,'ydir','reverse');
-        ax1=gca;
-        ax1_pos = ax1.Position; % position of first axes
-        ax1_pos(1) = ax1_pos(1)*0.5;
-        ax1_pos(3) = 0.00001;
-        ax2 = axes('Position',ax1_pos,...
-                   'Color','none');
-        set(ax2,'FontSize',15);
-        Zticks = [0:500:4000 5000];
-% $$$         Zticks = [0:200:2000];
-% $$$         Zticks = [0:100:800];
-        Zticks = [0:50:250];
-% $$$         Zticks = [3000:250:5500];
-        Pticks = zeros(size(Zticks));
-        for ii=1:length(Zticks)
-            Pticks(ii) = interp1(zofP_mean,P,-Zticks(ii),'linear');
-        end
-        Pticks(1) = 0;
-        set(ax2,'ytick',Pticks);
-        set(ax2,'yticklabel',Zticks);
-        ylabel(ax2,'Depth (m)');
-        ylim(ax2,zlim);
-        set(ax2,'ydir','reverse');
-    end
-
-    subplot(3,1,2);
-    [X,Y] = ndgrid(lags/12,T_YvPar);
-    contourf(X,Y,TvP.Tp_lr',[-1e50 Tcxs(1):Tcxs(2):Tcxs(3) 1e50],'linestyle','none');
-    hold on;
-    contour(X,Y,TvP.Tp_lr',[0.02:0.02:0.08],'-k');
-    contour(X,Y,TvP.Tp_lr',[-0.08:0.02:-0.02],'--k');
-    caxis([Tcxs(1) Tcxs(3)]);
-% $$$     xlabel('Lag (years)');
-    set(gca,'xticklabel',[]);
-    ylabel(tlab);
-    text(-1.95,6.5,['(b) $\Theta_\Theta(p)$ ' label ' regression']);
-    cb = colorbar;
-    set(cb,'ytick',[-0.08:0.04:0.08]);
-    ylabel(cb,'Temperature Anomaly ($^\circ$C / $\sigma$)','Interpreter','latex');
-    colormap(redblue);
-    ylim(tlim);
-    set(gca,'Position',[0.13 0.38 0.75 0.28]);
-    if (~remap_to_T)
-        set(gca,'ydir','reverse');
-        ax1=gca;
-        ax1_pos = ax1.Position; % position of first axes
-        ax1_pos(1) = ax1_pos(1)*0.5;
-        ax1_pos(3) = 0.00001;
-        ax2 = axes('Position',ax1_pos,...
-                   'Color','none');
-        set(ax2,'FontSize',15);
-        Zticks = [25 20 18 16 14];
-% $$$         Zticks = [30 26 22 18:-2:10];
-% $$$         Zticks = [30 22 18 16:-2:8];
-% $$$         Zticks = [2:-0.25:-0.5 -2];
-        Pticks = zeros(size(Zticks));
-        for ii=1:length(Zticks)
-            Pticks(ii) = interp1(TvP.Tp_mean,P,Zticks(ii),'linear');
-        end
-        set(ax2,'ytick',Pticks);
-        set(ax2,'yticklabel',Zticks);
-        ylabel(ax2,'Temperature ($^\circ$C)');
-        ylim(ax2,zlim);
-        set(ax2,'ydir','reverse');
-    end
-
-    subplot(3,1,3);
-    [X,Y] = ndgrid(lags/12,y_YvPar);
-    contourf(X,Y,YvP.Tp_lr',[-1e50 Ycxs(1):Ycxs(2):Ycxs(3) 1e50],'linestyle','none');
-    hold on;
-    contour(X,Y,YvP.Tp_lr',[0.02:0.02:0.08],'-k');
-    contour(X,Y,YvP.Tp_lr',[-0.08:0.02:-0.02],'--k');
-    caxis([Ycxs(1) Ycxs(3)]);
-    xlabel('Lag (years)');
-    ylabel(ylab);
-    ylim(yylim);
-    text(-1.95,45,['(b) $\Theta_\phi(p)$ ' label ' regression']);
-    cb = colorbar;
-    ylabel(cb,'Temperature Anomaly ($^\circ$C / $\sigma$)','Interpreter','latex');
-    set(gca,'Position',[0.13 0.07 0.75 0.28]);
-    if (~remap_to_T)
-        ax1=gca;
-        ax1_pos = ax1.Position; % position of first axes
-        ax1_pos(1) = ax1_pos(1)*0.5;
-        ax1_pos(3) = 0.00001;
-        ax2 = axes('Position',ax1_pos,...
-                   'Color','none');
-        set(ax2,'FontSize',15);
-        Zticks = [-75:15:75];
-% $$$         Zticks = [-70:10:80];
-        Pticks = zeros(size(Zticks));
-        for ii=1:length(Zticks)
-            Pticks(ii) = interp1(yofP_mean,P,Zticks(ii),'linear');
-        end
-        Pticks(1) = 0;
-        set(ax2,'ytick',Pticks);
-        set(ax2,'yticklabel',Zticks);
-        ylabel(ax2,'Latitude ($^\circ$N)');
-        ylim(ax2,yylim);
-    end
-    
-    % Plot budget terms:
-    vars = {'Tp','TENp','ADVp','FORp','VMIXp','RMIXp'};
-    names = {'d$\Theta$/dt','Tendency','Numerical Mixing','Forcing','Vertical Mixing','Neutral Mixing'};
-    names = {'d$\Theta$/dt','Tendency','Advection','Forcing','Vertical Mixing','Neutral Mixing'};
-
-% $$$     vars = {'FORp','VMIXp','ADVp'};
-% $$$     names = {'Surface Forcing','Vertical Mixing','Advection'};
-% $$$     names = {'Surface Forcing','Vertical Mixing','Numerical Mixing'};
-% $$$     txtlabs = {'(a)','(b)','(c)','(d)','(e)','(f)'};
-    
-    figure;
-    set(gcf,'Position',[1          36        1920         970]);
-    set(gcf,'defaulttextfontsize',15);
-    set(gcf,'defaultaxesfontsize',15);
-
-% $$$     Zcxs = [-5e-9 1e-10 5e-9];
-% $$$     Zcxs = [-1e-10 0.5e-11 1e-10];
-    Zcxs = [-0.25e-10 0.1e-11 0.25e-10];
-    [X,Y] = ndgrid(lags/12,Z_YvPar);
-    for vi=1:length(vars)
-        eval(['var = ZvP.' vars{vi} 'd_lr;']);
-        subplot(3,2,vi);
-% $$$         subplot(3,2,2*vi-1);
-        contourf(X,Y,var',[-1e50 Zcxs(1):Zcxs(2):Zcxs(3) 1e50],'linestyle','none');
-        caxis([Zcxs(1) Zcxs(3)]);
-        xlabel('Lag (years)');
-% $$$         set(gca,'xticklabel',[]);
-        ylabel(zlab);
-        ylim(zlim);
-% $$$         text(-1.95,6.5,[names{vi} ' ' label ' regression'],'BackgroundColor','w');
-% $$$         text(-1.95,6.5,[txtlabs{vi} ' ' names{vi}],'BackgroundColor','w');
-        text(-49,6.5,[txtlabs{vi} ' ' names{vi}]);
-        cb = colorbar;
-        ylabel(cb,'$\Theta_z$ Tendency ($^\circ$Cs$^{-1}$ / $\sigma$)','Interpreter','latex');
-        set(gca,'ydir','reverse');
-    end
-        colormap(redblue);
-
-    figure;
-    set(gcf,'Position',[1          36        1920         970]);
-    set(gcf,'defaulttextfontsize',15);
-    set(gcf,'defaultaxesfontsize',15);
-
-% $$$     Tcxs = [-3e-9 0.2e-10 3e-9];
-    Tcxs = [-0.25e-10 0.1e-11 0.25e-10];
-    [X,Y] = ndgrid(lags/12,T_YvPar);
-    for vi=1:length(vars)
-        eval(['var = TvP.' vars{vi} 'd_lr;']);
-        subplot(3,2,vi);
-% $$$         subplot(3,2,2*vi);
-        contourf(X,Y,var',[-1e50 Tcxs(1):Tcxs(2):Tcxs(3) 1e50],'linestyle','none');
-        caxis([Tcxs(1) Tcxs(3)]);
-        xlabel('Lag (years)');
-        ylabel(tlab);
-% $$$         text(-1.95,6.5,[names{vi} ' ' label ' regression']);
-% $$$         text(-1.95,6.5,[txtlabs{vi+3} ' ' names{vi}]);
-        text(-49,6.5,[txtlabs{vi} ' ' names{vi}]);
-        cb = colorbar;
-        ylabel(cb,'$\Theta_\Theta$ Tendency ($^\circ$Cs$^{-1}$ / $\sigma$)','Interpreter','latex');
-        colormap(redblue);
-        ylim(tlim);
-        set(gca,'ydir','reverse');
-    end
-        colormap(redblue);
-
-    figure;
-    set(gcf,'Position',[1          36        1920         970]);
-    set(gcf,'defaulttextfontsize',15);
-    set(gcf,'defaultaxesfontsize',15);
-
-    Ycxs = [-1e-9 1e-11 1e-9];
-    [X,Y] = ndgrid(lags/12,y_YvPar);
-    for vi=1:length(vars)
-        eval(['var = YvP.' vars{vi} 'd_lr;']);
-        subplot(3,2,vi);
-        contourf(X,Y,var',[-1e50 Ycxs(1):Ycxs(2):Ycxs(3) 1e50],'linestyle','none');
-        caxis([Ycxs(1) Ycxs(3)]);
-        xlabel('Lag (years)');
-        ylabel(ylab);
-        ylim(yylim);
-% $$$         text(-1.95,45,[names{vi} ' ' label ' regression']);
-        text(-1.95,45,names{vi});
-        cb = colorbar;
-        ylabel(cb,'$\Theta_\phi$ Tendency ($^\circ$Cs$^{-1}$ / $\sigma$)','Interpreter','latex');
-    end
-        colormap(redblue);
 
