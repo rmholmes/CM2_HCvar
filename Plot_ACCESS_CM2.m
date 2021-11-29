@@ -725,8 +725,8 @@ set(gca,'ydir','reverse');
 
 
 %%% Heat content anomalies and correlations (Figure 12):
-axes(axs); cla;
-nfilt = 12*5-1;
+figure;
+        nfilt = 12*5-1;
 Zvar = ZvP.Hp;
 Tvar = TvP.Hp;
 Yvar = YvP.Hp;
@@ -786,29 +786,6 @@ Tnor = (TvPar-repmat(mean(TvPar,2),[1 tL]))./ ...
 Ynor = (yvar-repmat(mean(yvar,2),[1 tL]))./ ...
        repmat(std(yvar,[],2),[1 tL]);
 
-% $$$     % Apply low-pass filter:
-% $$$     nfilt = 12*9-1;
-% $$$     Znor = filter_field(Znor,nfilt,'-t');
-% $$$     Tnor = filter_field(Tnor,nfilt,'-t');
-% $$$     Ynor = filter_field(Ynor,nfilt,'-t');
-% $$$     TS = filter_field(TS,nfilt,'-t');
-% $$$     Znor(isnan(Znor)) = 0;
-% $$$     Tnor(isnan(Tnor)) = 0;
-% $$$     Ynor(isnan(Ynor)) = 0;
-% $$$     TS(isnan(TS)) = 0;
-% $$$ 
-% $$$     % Apply high-pass filter:
-% $$$     nfilt = 12*9-1;
-% $$$     Znor = Znor - filter_field(Znor,nfilt,'-t');
-% $$$     Tnor = Tnor - filter_field(Tnor,nfilt,'-t');
-% $$$     Ynor = Ynor - filter_field(Ynor,nfilt,'-t');
-% $$$     TS = TS - filter_field(TS,nfilt,'-t');
-% $$$     Znor(isnan(Znor)) = 0;
-% $$$     Tnor(isnan(Tnor)) = 0;
-% $$$     Ynor(isnan(Ynor)) = 0;
-% $$$     TS(isnan(TS)) = 0;
-    
-
 Znor = (Znor-repmat(mean(Znor,2),[1 tL]))./ ...
        repmat(std(Znor,[],2),[1 tL]);
 Tnor = (Tnor-repmat(mean(Tnor,2),[1 tL]))./ ...
@@ -824,54 +801,55 @@ TvPar_lr = Tnor*TS/sqrt(sum(TS.^2))./ ...
 yvar_lr = Ynor*TS/sqrt(sum(TS.^2))./ ...
           sqrt(sum(Ynor.^2,2));
 
-% +-60 -> full
-baseMAT = 'D:/DATA/access-cm2/';
-PM60data = load([baseMAT 'PIcontrolTb05PP_ypm60_Tint.mat'],'ZvP','TvP','YvP');
-    
-Znor60 = (PM60data.ZvP.Hp-repmat(mean(PM60data.ZvP.Hp,2),[1 tL]))./ ...
-       repmat(std(PM60data.ZvP.Hp,[],2),[1 tL]);
-Tnor60 = (PM60data.TvP.Hp-repmat(mean(PM60data.TvP.Hp,2),[1 tL]))./ ...
-       repmat(std(PM60data.TvP.Hp,[],2),[1 tL]);
-Ynor60 = (PM60data.YvP.Hp-repmat(mean(PM60data.YvP.Hp,2),[1 tL]))./ ...
-       repmat(std(PM60data.YvP.Hp,[],2),[1 tL]);
-
-% $$$     % Apply low-pass filter:
-% $$$     nfilt = 12*9-1;
-% $$$     Znor = filter_field(Znor,nfilt,'-t');
-% $$$     Tnor = filter_field(Tnor,nfilt,'-t');
-% $$$     Ynor = filter_field(Ynor,nfilt,'-t');
-% $$$     TS = filter_field(TS,nfilt,'-t');
-% $$$     Znor(isnan(Znor)) = 0;
-% $$$     Tnor(isnan(Tnor)) = 0;
-% $$$     Ynor(isnan(Ynor)) = 0;
-% $$$     TS(isnan(TS)) = 0;
+% $$$ % +-60 -> full
+% $$$ PM60data = load([baseMAT 'PIcontrolTb05PP_ypm60_Tint.mat'],'ZvP','TvP','YvP');
+% $$$     
+% $$$ Znor60 = (PM60data.ZvP.Hp-repmat(mean(PM60data.ZvP.Hp,2),[1 tL]))./ ...
+% $$$        repmat(std(PM60data.ZvP.Hp,[],2),[1 tL]);
+% $$$ Tnor60 = (PM60data.TvP.Hp-repmat(mean(PM60data.TvP.Hp,2),[1 tL]))./ ...
+% $$$        repmat(std(PM60data.TvP.Hp,[],2),[1 tL]);
+% $$$ Ynor60 = (PM60data.YvP.Hp-repmat(mean(PM60data.YvP.Hp,2),[1 tL]))./ ...
+% $$$        repmat(std(PM60data.YvP.Hp,[],2),[1 tL]);
 % $$$ 
-% $$$     % Apply high-pass filter:
-% $$$     nfilt = 12*9-1;
-% $$$     Znor = Znor - filter_field(Znor,nfilt,'-t');
-% $$$     Tnor = Tnor - filter_field(Tnor,nfilt,'-t');
-% $$$     Ynor = Ynor - filter_field(Ynor,nfilt,'-t');
-% $$$     TS = TS - filter_field(TS,nfilt,'-t');
-% $$$     Znor(isnan(Znor)) = 0;
-% $$$     Tnor(isnan(Tnor)) = 0;
-% $$$     Ynor(isnan(Ynor)) = 0;
-% $$$     TS(isnan(TS)) = 0;
-    
-
-Znor60 = (Znor60-repmat(mean(Znor60,2),[1 tL]))./ ...
-       repmat(std(Znor60,[],2),[1 tL]);
-Tnor60 = (Tnor60-repmat(mean(Tnor60,2),[1 tL]))./ ...
-       repmat(std(Tnor60,[],2),[1 tL]);
-Ynor60 = (Ynor60-repmat(mean(Ynor60,2),[1 tL]))./ ...
-       repmat(std(Ynor60,[],2),[1 tL]);
-TS = (TS-mean(TS))/std(TS);
-    
-ZvPar_lr60 = Znor60*TS/sqrt(sum(TS.^2))./ ...
-    sqrt(sum(Znor60.^2,2));
-TvPar_lr60 = Tnor60*TS/sqrt(sum(TS.^2))./ ...
-    sqrt(sum(Tnor60.^2,2));
-yvar_lr60 = Ynor60*TS/sqrt(sum(TS.^2))./ ...
-          sqrt(sum(Ynor60.^2,2));
+% $$$ % $$$     % Apply low-pass filter:
+% $$$ % $$$     nfilt = 12*9-1;
+% $$$ % $$$     Znor = filter_field(Znor,nfilt,'-t');
+% $$$ % $$$     Tnor = filter_field(Tnor,nfilt,'-t');
+% $$$ % $$$     Ynor = filter_field(Ynor,nfilt,'-t');
+% $$$ % $$$     TS = filter_field(TS,nfilt,'-t');
+% $$$ % $$$     Znor(isnan(Znor)) = 0;
+% $$$ % $$$     Tnor(isnan(Tnor)) = 0;
+% $$$ % $$$     Ynor(isnan(Ynor)) = 0;
+% $$$ % $$$     TS(isnan(TS)) = 0;
+% $$$ % $$$ 
+% $$$ % $$$     % Apply high-pass filter:
+% $$$ % $$$     nfilt = 12*9-1;
+% $$$ % $$$     Znor = Znor - filter_field(Znor,nfilt,'-t');
+% $$$ % $$$     Tnor = Tnor - filter_field(Tnor,nfilt,'-t');
+% $$$ % $$$     Ynor = Ynor - filter_field(Ynor,nfilt,'-t');
+% $$$ % $$$     TS = TS - filter_field(TS,nfilt,'-t');
+% $$$ % $$$     Znor(isnan(Znor)) = 0;
+% $$$ % $$$     Tnor(isnan(Tnor)) = 0;
+% $$$ % $$$     Ynor(isnan(Ynor)) = 0;
+% $$$ % $$$     TS(isnan(TS)) = 0;
+% $$$     
+% $$$ 
+% $$$ Znor60 = (Znor60-repmat(mean(Znor60,2),[1 tL]))./ ...
+% $$$        repmat(std(Znor60,[],2),[1 tL]);
+% $$$ Tnor60 = (Tnor60-repmat(mean(Tnor60,2),[1 tL]))./ ...
+% $$$        repmat(std(Tnor60,[],2),[1 tL]);
+% $$$ Ynor60 = (Ynor60-repmat(mean(Ynor60,2),[1 tL]))./ ...
+% $$$        repmat(std(Ynor60,[],2),[1 tL]);
+% $$$ TS = (TS-mean(TS))/std(TS);
+% $$$     
+% $$$ ZvPar_lr60 = Znor60*TS/sqrt(sum(TS.^2))./ ...
+% $$$     sqrt(sum(Znor60.^2,2));
+% $$$ TvPar_lr60 = Tnor60*TS/sqrt(sum(TS.^2))./ ...
+% $$$     sqrt(sum(Tnor60.^2,2));
+% $$$ yvar_lr60 = Ynor60*TS/sqrt(sum(TS.^2))./ ...
+% $$$           sqrt(sum(Ynor60.^2,2));
+% $$$ 
+figure;
 
 pos1 = [0.3808    0.1030    0.18    0.8150];
 axs = axes('Position',pos1);%[0.8    0.1030    0.18    0.8150]);
@@ -879,9 +857,9 @@ plot(ZvPar_lr,P,'-k','linewidth',2);
 hold on;
 plot(TvPar_lr,P,'-r','linewidth',2);
 plot(yvar_lr,P,'-b','linewidth',2);
-plot(ZvPar_lr60,P,'--k','linewidth',1);
-plot(TvPar_lr60,P,'--r','linewidth',1);
-plot(yvar_lr60,P,'--b','linewidth',1);
+% $$$ plot(ZvPar_lr60,P,'--k','linewidth',1);
+% $$$ plot(TvPar_lr60,P,'--r','linewidth',1);
+% $$$ plot(yvar_lr60,P,'--b','linewidth',1);
 xlabel('Correlation with total OHC');
 xlim([-0.45 1]);
 set(gca,'yticklabel',[]);
@@ -891,23 +869,9 @@ set(gca,'ydir','reverse')
 text(0.001,2,'(b)');
 % $$$ text(0.88,2,'(c)');
 
+
 % Linear trends:
 %----------------
-
-% $$$ % Testing on total OHC:
-% $$$ t1 = 1;
-% $$$ t2 = tL;
-% $$$ timean = mean(reshape(time(t1:t2),[12 (t2-t1+1)/12]),1)';
-% $$$ OHCan = squeeze(mean(reshape(OHC(t1:t2),[12 (t2-t1+1)/12]),1));
-% $$$ 
-% $$$ windows = [3:4:100];
-% $$$ trends_std = zeros(size(windows));
-% $$$ for wi = 1:length(windows)
-% $$$     trends = lintrends(timean,OHCan',windows(wi));
-% $$$     trends_std(wi) = nanstd(trends);
-% $$$ end
-% $$$ plot(windows,trends_std);
-% $$$ % Checks out. 
 
 % Calculate annual average:
 t1 = 1;
@@ -1032,10 +996,10 @@ set(gca,'ydir','reverse');
 %%% Tyz and MOCyz plotting (Figures 8-10):
 
 % Load Tyz and MOCyz data:
-baseMAT = 'D:/DATA/access-cm2/';
 load([baseMAT 'PIcontrolTb05PP_Tint_MOC.mat']);
 load([baseMAT 'PIcontrolTb05PP_Tint_Tyz.mat']);
 
+% Mid-depth/mid-temperature:
 [tmp ind1] = min(abs(P-10));[tmp ind2] = min(abs(P-30));
 ts = mean(ZvP.Tp(ind1:ind2,:),1)';
 ts = filter_field(ts,12*10+1,'-t');
@@ -1043,19 +1007,23 @@ ts(isnan(ts)) = 0;
 label = '$\Theta_z(10<p<30,t';
 name = 'Tzp10to30_MOCfull_TyzReg_10yrSmoothing';
 
-[tmp ind1] = min(abs(P-90));[tmp ind2] = min(abs(P-100));
-ts = mean(TvP.Tp(ind1:ind2,:),1)';
-ts = filter_field(ts,12*1+1,'-t'); % Filtering
-ts(isnan(ts)) = 0;
-label = '$\Theta_\Theta(90<p_\Theta<100,t';
-name = 'TTp90to100_MOCfull_TyzReg_10yrSmoothing';
+% Cold temperatures:
+% $$$ [tmp ind1] = min(abs(P-90));[tmp ind2] = min(abs(P-100));
+% $$$ ts = mean(TvP.Tp(ind1:ind2,:),1)';
+% $$$ ts = filter_field(ts,12*1+1,'-t'); % Filtering
+% $$$ ts(isnan(ts)) = 0;
+% $$$ label = '$\Theta_\Theta(90<p_\Theta<100,t';
+% $$$ name = 'TTp90to100_MOCfull_TyzReg_10yrSmoothing';
+% $$$
+% $$$
 
-[tmp ind1] = min(abs(P-95));[tmp ind2] = min(abs(P-100));
-ts = mean(YvP.Tp(ind1:ind2,:),1)';
-ts = filter_field(ts,1*12+1,'-t');
-ts(isnan(ts)) = 0;
-label = '$\Theta_\phi(95<p<100,t';
-name = 'Tzp90to100_MOCfull_TyzReg';
+% High northern latitudes:
+% $$$ [tmp ind1] = min(abs(P-95));[tmp ind2] = min(abs(P-100));
+% $$$ ts = mean(YvP.Tp(ind1:ind2,:),1)';
+% $$$ ts = filter_field(ts,1*12+1,'-t');
+% $$$ ts(isnan(ts)) = 0;
+% $$$ label = '$\Theta_\phi(95<p<100,t';
+% $$$ name = 'Tzp90to100_MOCfull_TyzReg';
 
 % $$$ lags = [-100:10:100];
 % $$$ lags = [0]
@@ -1122,7 +1090,6 @@ text(-79,200,'(b)');
 set(gca,'Position',[0.0973 0.3788 0.7464 0.2739]);
 
 subplot(3,2,[5 6]);
-% $$$ contourf(X,Y,MOCyz_reg,[-1e50 -0.5:0.025:0.5 1e50],'linestyle','none');
 contourf(X,Y,MOCyz_reg,[-1e50 -1:0.05:1 1e50],'linestyle','none');
 hold on;
 [c,h] = contour(X,Y,MOC_mean+MOCgm_mean,[3:3:100],'-k');
@@ -1140,13 +1107,6 @@ ylim([0 4000]);
 xlim([-80 70]);
 text(-79,200,'(c)');
 set(gca,'Position',[0.0973 0.0703 0.7464 0.2739]);
-
-% $$$ if (lag>0)
-% $$$     saveas(gcf,sprintf(['Decadal/' name '_%02d.png'],li));
-% $$$ else
-% $$$     saveas(gcf,['Decadal/ZTp10to30_MOC_TyzReg_10yrSmoothing_' ...
-% $$$                 num2str(-lag/12) 'lag.png']);
-% $$$ end    
 end
 
 
@@ -1158,7 +1118,7 @@ nw = 10;
 fL = length(f);
 df = f(2)-f(1);
 
-TorH = 0;
+TorH = 1;
 
 % Combination variables:
 ZvP.FORpVMIXp = ZvP.FORp+ZvP.VMIXp;
@@ -1209,7 +1169,7 @@ names = {{'$\partial\Theta_\Theta/\partial t$','Tendency','Numerical Mixing','Fo
          {'$\partial\Theta_\phi/\partial t$','Tendency','Advection','Forcing','Neutral Mixing','Vertical Mixing', ...
          'FOR+VMIX','ADV+VMIX','MIX','FOR+MIX','ADV+FOR'}};
 
-vars = {'ADVp'};
+% $$$ vars = {'ADVp'};
 
 for ti=1:length(typs)
     for vi=1:length(vars)
@@ -1364,81 +1324,3 @@ end
 set(gca,'Position',poss(ti+1,:));
 title([letlab{ti} ' ' tnames{ti} ' Budget'],'Color',tcols{ti});
 end
-
-%%% Lag correlations:
-
-[tmp ind1] = min(abs(P-10));[tmp ind2] = min(abs(P-30));
-ts1 = mean(ZvP.Tp(ind1:ind2,:),1)';
-ts1 = filter_field(ts1,12*10+1,'-t');
-ts1(isnan(ts1)) = 0;
-
-[tmp ind1] = min(abs(P-90));[tmp ind2] = min(abs(P-100));
-ts2 = mean(TvP.Tp(ind1:ind2,:),1)';
-ts2 = filter_field(ts2,12*10+1,'-t'); % Filtering
-ts2(isnan(ts2)) = 0;
-
-lags = [-100:1:100];
-cor = zeros(size(lags));
-
-for li = 1:length(lags)
-    lag = lags(li)*12;
-
-    ts_lagged = zeros(size(ts1));
-    if (lag<0)
-        ts_lagged(1:(end+lag)) = ts1((-lag+1):end);
-        ts_lagged((end+lag+1):end) = 0;
-    elseif (lag == 0)
-        ts_lagged = ts1;
-    else
-        ts_lagged(1:(lag)) = 0;
-        ts_lagged((lag+1):end) = ts1(1:(end-lag));
-    end
-
-    cor(li) = corr(ts_lagged,ts2);
-end
-
-[max_cor, max_lag] = max(cor);
-[min_cor, min_lag] = min(cor);
-max_lag = lags(max_lag);
-min_lag = lags(min_lag);
-
-ts_max = zeros(size(ts1));
-lag = max_lag*12;
-if (lag<0)
-    ts_max(1:(end+lag)) = ts1((-lag+1):end);
-    ts_max((end+lag+1):end) = 0;
-elseif (lag == 0)
-    ts_max = ts1;
-else
-    ts_max(1:(lag)) = 0;
-    ts_max((lag+1):end) = ts1(1:(end-lag));
-end
-
-ts_min = zeros(size(ts1));
-lag = min_lag*12;
-if (lag<0)
-    ts_min(1:(end+lag)) = ts1((-lag+1):end);
-    ts_min((end+lag+1):end) = 0;
-elseif (lag == 0)
-    ts_min = ts1;
-else
-    ts_min(1:(lag)) = 0;
-    ts_min((lag+1):end) = ts1(1:(end-lag));
-end
-
-figure;
-subplot(2,1,1);
-plot(time,ts1);
-hold on;
-plot(time,ts2,'-r');
-plot(time,ts_max,'--k');
-plot(time,ts_min,':k');
-legend('$\Theta_z(10<p<30,t)$','$\Theta_\Theta(90<p<1000,t)$', ...
-       ['$\Theta_z(10<p<30,t-%03d)$',max_lag), ...
-       sprintf('$\Theta_z(10<p<30,t-%03d)$',min_lag));
-subplot(2,1,2);
-plot(lags,cor);
-xlabel('Lag (years)');
-ylabel('Correlation');
-
-
