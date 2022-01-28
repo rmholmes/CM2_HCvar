@@ -2,7 +2,7 @@
 
 Contains data and code to plot the figures in the following manuscript:
 
-Holmes, R.M., Sohail, T. and Zika, J.D. (2021): Adiabatic and diabatic signatures of ocean temperature variability, Journal of Climate, **XXX XXX**
+Holmes, R.M., Sohail, T. and Zika, J.D. (2022): Adiabatic and diabatic signatures of ocean temperature variability, Journal of Climate, [https://doi.org/10.1175/JCLI-D-21-0695.1](https://doi.org/10.1175/JCLI-D-21-0695.1)
 
 Process_ACCESS_CM2.m contains the code to process raw ACCESS-CM2 output on NCI into .mat files in temperature, depth and latitude coordinates
 
